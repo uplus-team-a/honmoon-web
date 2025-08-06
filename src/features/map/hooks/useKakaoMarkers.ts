@@ -135,7 +135,8 @@ export const useKakaoMarkers = (
   }, []);
 
   useEffect(() => {
-    if (!mapInstance.current || !window.kakao || !window.kakao.maps) return;
+    const currentMapInstance = mapInstance.current;
+    if (!currentMapInstance || !window.kakao || !window.kakao.maps) return;
 
     // 기존 마커 및 인포윈도우 제거
     markerRefs.current.forEach((marker) => {
@@ -156,14 +157,14 @@ export const useKakaoMarkers = (
 
         const marker = new window.kakao.maps.Marker({
           position: markerPosition,
-          map: mapInstance.current!,
+          map: currentMapInstance,
           title,
           image: markerImage,
           clickable: true,
         });
 
         // 마커가 지도에 제대로 표시되는지 확인
-        marker.setMap(mapInstance.current!);
+        marker.setMap(currentMapInstance);
         markerRefs.current.push(marker);
 
         // 인포윈도우 생성
@@ -192,9 +193,9 @@ export const useKakaoMarkers = (
               infoWindow.close();
               return null;
             } else {
-              infoWindow.open(mapInstance.current!, marker);
+              infoWindow.open(currentMapInstance, marker);
               // 지도 중심을 마커 위치로 부드럽게 이동
-              mapInstance.current!.panTo(markerPosition);
+              currentMapInstance.panTo(markerPosition);
               return index;
             }
           });
@@ -203,7 +204,7 @@ export const useKakaoMarkers = (
         window.kakao.maps.event.addListener(marker, "mouseover", () => {
           setActiveInfoWindow((prevActive) => {
             if (prevActive !== index) {
-              infoWindow.open(mapInstance.current!, marker);
+              infoWindow.open(currentMapInstance, marker);
             }
             return prevActive;
           });
@@ -221,23 +222,19 @@ export const useKakaoMarkers = (
     );
 
     // 지도 클릭 시 모든 인포윈도우 닫기
-    if (mapInstance.current) {
-      window.kakao.maps.event.addListener(
-        mapInstance.current,
-        "click",
-        closeAllInfoWindows
-      );
-    }
+    window.kakao.maps.event.addListener(
+      currentMapInstance,
+      "click",
+      closeAllInfoWindows
+    );
 
     return () => {
       // 컴포넌트 언마운트 시 마커와 이벤트 리스너 제거
-      if (mapInstance.current) {
-        window.kakao.maps.event.removeListener(
-          mapInstance.current,
-          "click",
-          closeAllInfoWindows
-        );
-      }
+      window.kakao.maps.event.removeListener(
+        currentMapInstance,
+        "click",
+        closeAllInfoWindows
+      );
 
       markerRefs.current.forEach((marker) => {
         marker.setMap(null);
@@ -246,7 +243,13 @@ export const useKakaoMarkers = (
         infoWindow.close();
       });
     };
-  }, [mapInstance, markers, createMarkerImage, createInfoWindowContent]);
+  }, [
+    mapInstance,
+    markers,
+    createMarkerImage,
+    createInfoWindowContent,
+    closeAllInfoWindows,
+  ]);
 
   /**
    * 특정 마커로 지도 중심을 이동시키고 인포윈도우를 표시하는 함수
@@ -311,7 +314,8 @@ export const useKakaoMarkers = (
    * 새로고침 후 마커가 안 보일 때 사용
    */
   const redrawMarkers = useCallback(() => {
-    if (!mapInstance.current || !window.kakao || !window.kakao.maps) return;
+    const currentMapInstance = mapInstance.current;
+    if (!currentMapInstance || !window.kakao || !window.kakao.maps) return;
 
     // 기존 마커 및 인포윈도우 제거
     markerRefs.current.forEach((marker) => {
@@ -332,14 +336,14 @@ export const useKakaoMarkers = (
 
         const marker = new window.kakao.maps.Marker({
           position: markerPosition,
-          map: mapInstance.current!,
+          map: currentMapInstance,
           title,
           image: markerImage,
           clickable: true,
         });
 
         // 마커가 지도에 제대로 표시되는지 확인
-        marker.setMap(mapInstance.current!);
+        marker.setMap(currentMapInstance);
         markerRefs.current.push(marker);
 
         // 인포윈도우 생성
@@ -368,9 +372,9 @@ export const useKakaoMarkers = (
               infoWindow.close();
               return null;
             } else {
-              infoWindow.open(mapInstance.current!, marker);
+              infoWindow.open(currentMapInstance, marker);
               // 지도 중심을 마커 위치로 부드럽게 이동
-              mapInstance.current!.panTo(markerPosition);
+              currentMapInstance.panTo(markerPosition);
               return index;
             }
           });
@@ -379,7 +383,7 @@ export const useKakaoMarkers = (
         window.kakao.maps.event.addListener(marker, "mouseover", () => {
           setActiveInfoWindow((prevActive) => {
             if (prevActive !== index) {
-              infoWindow.open(mapInstance.current!, marker);
+              infoWindow.open(currentMapInstance, marker);
             }
             return prevActive;
           });
@@ -397,13 +401,11 @@ export const useKakaoMarkers = (
     );
 
     // 지도 클릭 시 모든 인포윈도우 닫기
-    if (mapInstance.current) {
-      window.kakao.maps.event.addListener(
-        mapInstance.current,
-        "click",
-        closeAllInfoWindows
-      );
-    }
+    window.kakao.maps.event.addListener(
+      currentMapInstance,
+      "click",
+      closeAllInfoWindows
+    );
   }, [
     mapInstance,
     markers,
