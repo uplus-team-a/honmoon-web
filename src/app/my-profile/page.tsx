@@ -3,7 +3,7 @@ import ActivityHistory from "features/profile/components/ActivityHistory";
 import RaffleHistory from "../../features/profile/components/RaffleHistory";
 
 /**
- * 마이 프로필 페이지 라우트
+ * 마이 프 페이지 라우트..ㅓㅑㅓㅑㅓㅑㅓㅑ.
  */
 export default function MyProfileRoute() {
   const activityHistory = [
