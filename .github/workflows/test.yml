@@ -1,0 +1,73 @@
+name: Test - Jest
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: ["**"]
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    name: Run Jest Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: "10"
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build project
+        run: pnpm run build
+
+      - name: Run tests
+        run: pnpm run test --json --silent
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Report Test Results
+        if: always()
+        run: |
+          echo "## 테스트 결과 요약" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f jest-results.json ]; then
+            # JSON 파일에서 테스트 결과 추출 및 요약 생성
+            TEST_RESULTS=$(cat jest-results.json)
+            TOTAL_TESTS=$(echo $TEST_RESULTS | jq -r '.numTotalTests // 0')
+            PASSED_TESTS=$(echo $TEST_RESULTS | jq -r '.numPassedTests // 0')
+            FAILED_TESTS=$(echo $TEST_RESULTS | jq -r '.numFailedTests // 0')
+            TEST_SUITES=$(echo $TEST_RESULTS | jq -r '.numTotalTestSuites // 0')
+            PASSED_SUITES=$(echo $TEST_RESULTS | jq -r '.numPassedTestSuites // 0')
+            FAILED_SUITES=$(echo $TEST_RESULTS | jq -r '.numFailedTestSuites // 0')
+
+            echo "| 카테고리 | 통과 | 실패 | 총계 |" >> $GITHUB_STEP_SUMMARY
+            echo "| :--- | :---: | :---: | :---: |" >> $GITHUB_STEP_SUMMARY
+            echo "| 테스트 케이스 | $PASSED_TESTS | $FAILED_TESTS | $TOTAL_TESTS |" >> $GITHUB_STEP_SUMMARY
+            echo "| 테스트 스위트 | $PASSED_SUITES | $FAILED_SUITES | $TEST_SUITES |" >> $GITHUB_STEP_SUMMARY
+
+            # 실패한 테스트가 있으면 상세 정보 표시
+            if [ "$FAILED_TESTS" -gt "0" ]; then
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "### 실패한 테스트" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+
+              # 실패한 테스트 목록 추출 및 표시
+              echo $TEST_RESULTS | jq -r '.testResults[] | select(.status == "failed") | "- " + .name + ": " + (.assertionResults[] | select(.status == "failed") | .fullName)' >> $GITHUB_STEP_SUMMARY 2>/dev/null || echo "실패한 테스트 상세 정보를 가져올 수 없습니다." >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "❌ Jest 결과 파일을 찾을 수 없습니다." >> $GITHUB_STEP_SUMMARY
+          fi
