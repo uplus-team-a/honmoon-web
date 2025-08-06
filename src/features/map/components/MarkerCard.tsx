@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Marker } from "../data/markers";
-import { DefaultCardImage, EyeIcon } from "../../../shared/components/ui";
+import { EyeIcon } from "../../../shared/components/ui";
 import { MarkerImage } from "../../../shared/components/ui/marker-image";
 import { Button } from "../../../shared/components/ui/button";
 import { ArrowRight } from "lucide-react";

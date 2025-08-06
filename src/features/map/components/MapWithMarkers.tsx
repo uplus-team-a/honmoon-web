@@ -24,7 +24,7 @@ const MapWithMarkers: React.FC<MapWithMarkersProps> = ({ focusMarkerId }) => {
   );
 
   // 카카오 맵 초기화
-  const { mapContainerRef, mapInstanceRef, isMapLoaded } = useKakaoMap(
+  const { mapContainerRef, mapInstanceRef, isMapLoaded, error } = useKakaoMap(
     initialLat,
     initialLng,
     4 // 초기 줌 레벨
@@ -94,23 +94,46 @@ const MapWithMarkers: React.FC<MapWithMarkersProps> = ({ focusMarkerId }) => {
           ref={mapContainerRef}
           className="w-full h-[550px] rounded-2xl shadow-md bg-white overflow-hidden"
         />
-        <div className="absolute top-4 right-4 bg-white p-3 rounded-xl shadow-lg text-sm">
-          <div className="font-semibold mb-1 text-gray-900">
-            총 {markers.length}개 장소
+
+        {error && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-95 rounded-2xl">
+            <div className="text-center p-6">
+              <div className="text-red-500 text-lg font-semibold mb-2">
+                지도를 로드할 수 없습니다
+              </div>
+              <div className="text-gray-600 text-sm mb-4">{error}</div>
+              <div className="text-xs text-gray-500">
+                카카오맵 API 키를 설정하려면 프로젝트 루트에 .env.local 파일을
+                생성하고
+                <br />
+                NEXT_PUBLIC_KAKAO_MAP_APP_KEY=your_api_key_here 를 추가하세요.
+              </div>
+            </div>
           </div>
-          <div className="text-xs text-gray-500">
-            표시 중: {visibleMarkers.length}개
+        )}
+
+        {!error && (
+          <div className="absolute top-4 right-4 bg-white p-3 rounded-xl shadow-lg text-sm">
+            <div className="font-semibold mb-1 text-gray-900">
+              총 {markers.length}개 장소
+            </div>
+            <div className="text-xs text-gray-500">
+              표시 중: {visibleMarkers.length}개
+            </div>
           </div>
-        </div>
+        )}
       </div>
-      <MarkerList
-        markers={markers}
-        onMarkerClick={handleMarkerFocus}
-        activeMarkerIndex={activeMarkerIndex}
-        visibleMarkers={visibleMarkers}
-        onToggleVisibility={toggleMarkerVisibility}
-        onRedrawMarkers={redrawMarkers}
-      />
+
+      {!error && (
+        <MarkerList
+          markers={markers}
+          onMarkerClick={handleMarkerFocus}
+          activeMarkerIndex={activeMarkerIndex}
+          visibleMarkers={visibleMarkers}
+          onToggleVisibility={toggleMarkerVisibility}
+          onRedrawMarkers={redrawMarkers}
+        />
+      )}
     </div>
   );
 };
