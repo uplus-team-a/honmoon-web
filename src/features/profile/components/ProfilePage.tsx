@@ -4,6 +4,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 
 export default function ProfilePage() {
   return (
@@ -28,9 +29,11 @@ export default function ProfilePage() {
           </div>
         </div>
         <div className="flex flex-col gap-2">
-          <button className="border rounded px-4 py-1 text-sm">
-            프로필 관리
-          </button>
+          <Link href="/editProfile">
+            <button className="border rounded px-4 py-1 text-sm">
+              프로필 관리
+            </button>
+          </Link>
           <button className="border rounded px-4 py-1 text-sm">로그아웃</button>
         </div>
       </div>
