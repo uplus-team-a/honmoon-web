@@ -10,47 +10,14 @@ type RaffleItem = {
     appliedAt: string;
     status: 'APPLY' | 'WIN' | 'LOSE' | string;
   };
-  
+
   type RaffleHistoryProps = {
     raffleHistory: RaffleItem[];
   };
 
 
 export default function RaffleHistory({raffleHistory} : RaffleHistoryProps) {
-//   const allItems = [
-//     { name: "까치 호랑이 배지", date: "2025.07.14", status: "대기중" },
-//     { name: "사자 보이즈 2차 키링", date: "2025.06.23", status: "당첨" },
-//     { name: "한도스 부채", date: "2025.05.21", status: "미당첨" },
-//     { name: "엽서 세트", date: "2025.05.05", status: "미당첨" },
-//     { name: "스티커 팩", date: "2025.04.20", status: "당첨" },
-//     { name: "빈티지 키링", date: "2025.03.11", status: "대기중" },
-//   ];
     const allItems = raffleHistory;
-
-//   const allItems = 
-//   [
-//     {
-//       "id": "raffle_001",
-//       "productName": "까치 호랑이 배지",
-//       "productImageUrl": "https://cdn.example.com/images/badge.png",
-//       "appliedAt": "2025-07-14",
-//       "status": "APPLY"
-//     },
-//     {
-//       "id": "raffle_002",
-//       "productName": "사자 보이즈 2차 키링",
-//       "productImageUrl": "https://cdn.example.com/images/keyring.png",
-//       "appliedAt": "2025-06-23",
-//       "status": "WIN"
-//     },
-//     {
-//       "id": "raffle_003",
-//       "productName": "한도스 부채",
-//       "productImageUrl": "https://cdn.example.com/images/fan.png",
-//       "appliedAt": "2025-05-21",
-//       "status": "LOSE"
-//     }
-//   ]
   
 
   const [visibleCount, setVisibleCount] = useState(3);
