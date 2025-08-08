@@ -1,13 +1,12 @@
 import React from "react";
 import raffleItems from "features/common/data/raffleItems";
 
-type Props = {
+export default async function RaffleDetailPage({
+  params,
+}: {
   params: { id: string };
-};
-
-export default async function RaffleDetailPage(props: Props) {
-  const { params } = props;
-  const { id } = await params;
+}) {
+  const { id } = params;
 
   // TODO: Fetch raffle item data based on the ID from an API or data source
   const raffleItem = raffleItems.find((item) => item.id === id);
