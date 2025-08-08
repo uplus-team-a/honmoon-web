@@ -1,12 +1,12 @@
 import React from "react";
 import raffleItems from "features/common/data/raffleItems";
 
-interface RaffleDetailPageProps {
+type Props = {
   params: { id: string };
-}
+};
 
-const RaffleDetailPage: React.FC<RaffleDetailPageProps> = ({ params }) => {
-  const { id } = params;
+export default async function RaffleDetailPage({ params }: Props) {
+  const { id } = await params;
 
   // TODO: Fetch raffle item data based on the ID from an API or data source
   const raffleItem = raffleItems.find((item) => item.id === id);
@@ -31,12 +31,9 @@ const RaffleDetailPage: React.FC<RaffleDetailPageProps> = ({ params }) => {
         className="w-64 mb-4"
       />
       <p className="text-gray-700">{raffleItem.description}</p>
-      {/* Add more details and the entry form here */}
       <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-4">
         응모하기
       </button>
     </div>
   );
-};
-
-export default RaffleDetailPage;
+}
