@@ -4,15 +4,15 @@ import { useState } from "react";
 import { UserIcon } from "lucide-react";
 
 type Activities = {
-    id: string;
-    placeName: string;
-    placeImageUrl: string;
-    visitedDate: string;
-  };
-  
-  type ActivityHistoryProps = {
-    activityHistory: Activities[];
-  };
+  id: string;
+  placeName: string;
+  placeImageUrl: string;
+  visitedDate: string;
+};
+
+type ActivityHistoryProps = {
+  activityHistory: Activities[];
+};
 
 export default function ActivityHistory({activityHistory} : ActivityHistoryProps) {
 
