@@ -5,9 +5,8 @@ type Props = {
   params: { id: string };
 };
 
-export default async function RaffleDetailPage(props: Promise<Props>) {
-  const { params } = await props;
-  const { id } = await params;
+export default function RaffleDetailPage({ params }: Props) {
+  const { id } = params;
 
   // TODO: Fetch raffle item data based on the ID from an API or data source
   const raffleItem = raffleItems.find((item) => item.id === id);
