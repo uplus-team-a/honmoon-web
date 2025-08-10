@@ -6,7 +6,7 @@ import activityHistory from "features/common/data/activityHistory";
 import raffleHistory from "features/common/data/raffleHistory";
 
 /**
- * 마이 프로필 페이지 라우트
+ * 마이 프 페이지 라우트..ㅓㅑㅓㅑㅓㅑㅓㅑ.
  */
 
 export default function MyProfileRoute() {
