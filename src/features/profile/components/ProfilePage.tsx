@@ -3,38 +3,78 @@
  */
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
+import { useEffect } from "react";
+import { useAuthStore } from "../../../store/auth";
 
 export default function ProfilePage() {
+  // 개별 selector 사용
+  const user = useAuthStore((s) => s.user);
+  const token = useAuthStore((s) => s.token);
+  const initializeFromStorage = useAuthStore((s) => s.initializeFromStorage);
+  const fetchProfile = useAuthStore((s) => s.fetchProfile);
+  const loginWithGoogle = useAuthStore((s) => s.loginWithGoogle);
+  const signOut = useAuthStore((s) => s.signOut);
+
+  useEffect(() => {
+    initializeFromStorage();
+  }, [initializeFromStorage]);
+
+  useEffect(() => {
+    if (token && !user) {
+      fetchProfile().catch(() => {});
+    }
+  }, [token, user, fetchProfile]);
+
   return (
     <div className="max-w-3xl mx-auto p-6">
-      {/* 헤더 */}
       <h1 className="text-2xl font-bold mb-6">프로필 및 활동내역</h1>
 
-      {/* 유저 프로필 카드 */}
       <div className="flex items-center justify-between bg-white shadow-md rounded-xl p-4 mb-8 border">
         <div className="flex items-center gap-4">
           <img
-            src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRgorcLvoZtje4lJsMPMrMWfKLkWnB1EGmETQ&s"
+            src={user?.picture || "https://via.placeholder.com/80"}
             alt="프로필 이미지"
             className="w-20 h-20 rounded-full border"
           />
           <div>
-            <div className="font-bold text-lg">Lee lee</div>
-            <div className="text-sm text-gray-600">lee@gmail.com</div>
-            <div className="text-purple-600 text-sm mt-1">
-              7/13 스탬프 · 2,450 포인트 · Top 5% of K-pop Explorers
+            <div className="font-bold text-lg">
+              {user?.name || "로그인이 필요합니다"}
             </div>
+            <div className="text-sm text-gray-600">
+              {user?.email || "Google 계정으로 로그인하세요"}
+            </div>
+            {user && (
+              <div className="text-purple-600 text-sm mt-1">
+                {user.provider?.toUpperCase()}
+              </div>
+            )}
           </div>
         </div>
         <div className="flex flex-col gap-2">
           <Link href="/editProfile">
-            <button className="border rounded px-4 py-1 text-sm">
+            <button
+              className="border rounded px-4 py-1 text-sm"
+              disabled={!user}
+            >
               프로필 관리
             </button>
           </Link>
-          <button className="border rounded px-4 py-1 text-sm">로그아웃</button>
+          {!user ? (
+            <button
+              className="border rounded px-4 py-1 text-sm"
+              onClick={() => loginWithGoogle("/my-profile")}
+            >
+              구글로 로그인
+            </button>
+          ) : (
+            <button
+              className="border rounded px-4 py-1 text-sm"
+              onClick={() => signOut()}
+            >
+              로그아웃
+            </button>
+          )}
         </div>
       </div>
     </div>

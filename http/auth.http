@@ -1,0 +1,155 @@
+### 0) 변수 설정(필요 시)
+@signupEmail=sylvester7412@gmail.com
+@signupName=지원
+@basicAuth={{basicToken}}
+
+### 1) Basic 인증으로 테스트용 세션 토큰 발급
+POST {{host}}/api/auth/test-token
+Accept: application/json
+Authorization: {{basicToken}}
+
+> {%
+    client.test("Basic 테스트 토큰 발급 - 200", () => {
+        client.assert(response.status === 200, "Status must be 200 OK");
+        client.assert(!!response.body.data.token, "token must exist");
+    });
+    const tok = response.body.data.token;
+    client.global.set("token", `Bearer ${tok}`);
+%}
+
+### 1-1) 현재 사용자 프로필 확인(테스트 토큰)
+GET {{host}}/api/auth/me
+Accept: application/json
+Authorization: {{token}}
+
+> {%
+    client.test("현재 사용자 프로필(테스트 토큰) - 200", () => {
+        client.assert(response.status === 200, "Status must be 200 OK");
+        client.assert(!!response.body.data.sub, "sub must exist");
+    });
+%}
+
+### 2) 회원가입: 이메일 매직 링크 발급
+POST {{host}}/api/auth/signup/email?redirectUrl=https://honmoon.site/auth/success
+Content-Type: application/json
+
+{
+  "email": "{{signupEmail}}",
+  "name": "{{signupName}}"
+}
+
+> {%
+    client.test("회원가입 매직 링크 요청 - 200", () => {
+        client.assert(response.status === 200, "Status must be 200 OK");
+        client.assert(!!response.body.data.magicLink, "magicLink must exist");
+    });
+    const magic = response.body.data.magicLink;
+    client.global.set("signupMagicLink", magic);
+    const m = magic.match(/[?&]token=([^&]+)/);
+    if (m && m[1]) {
+        client.global.set("signupToken", m[1]);
+    }
+%}
+
+### 3) 회원가입: 백엔드 콜백 검증 → 세션 토큰 발급(302 Location 해시)
+GET {{host}}/api/auth/email/callback?token={{signupToken}}&purpose=signup&redirectUrl=https://honmoon.site/auth/success
+Accept: application/json
+
+> {%
+    client.test("백엔드 콜백 검증 - 302", () => {
+        client.assert([302, 400].includes(response.status), "Expected 302 or 400");
+    });
+    if (response.status === 302) {
+        const loc = response.headers.valueOf('Location');
+        const m = loc && loc.match(/#token=([^&]+)/);
+        if (m && m[1]) {
+            client.global.set("sessionToken", m[1]);
+            client.global.set("token", `Bearer ${m[1]}`);
+        }
+    }
+%}
+
+### 4) 회원가입 직후: 현재 사용자 프로필 확인
+GET {{host}}/api/auth/me
+Accept: application/json
+Authorization: {{token}}
+
+> {%
+    client.test("현재 사용자 프로필 - 200", () => {
+        client.assert(response.status === 200, "Status must be 200 OK");
+        client.assert(!!response.body.data.sub, "sub must exist");
+    });
+%}
+
+### 5) 로그인: 사용자ID로 매직 링크 발급(사전 확보된 userId 필요)
+POST {{host}}/api/auth/login/email/by-user?redirectUrl=https://honmoon.site/dashboard
+Content-Type: application/json
+
+{
+  "userId": "00000000-0000-0000-0000-000000000000"
+}
+
+> {%
+    client.test("로그인 매직 링크 요청(by-user) - 200", () => {
+        client.assert(response.status === 200, "Status must be 200 OK");
+        client.assert(!!response.body.data.magicLink, "magicLink must exist");
+    });
+    const magic = response.body.data.magicLink;
+    client.global.set("loginMagicLink", magic);
+    const m = magic.match(/[?&]token=([^&]+)/);
+    if (m && m[1]) {
+        client.global.set("loginToken", m[1]);
+    }
+%}
+
+### 6) 로그인: 백엔드 콜백 검증 → 새 세션 토큰 발급
+GET {{host}}/api/auth/email/callback?token={{loginToken}}&purpose=login&redirectUrl=https://honmoon.site/dashboard
+Accept: application/json
+
+> {%
+    client.test("백엔드 콜백 검증(로그인) - 302", () => {
+        client.assert([302, 400].includes(response.status), "Expected 302 or 400");
+    });
+    if (response.status === 302) {
+        const loc = response.headers.valueOf('Location');
+        const m = loc && loc.match(/#token=([^&]+)/);
+        if (m && m[1]) {
+            client.global.set("sessionToken", m[1]);
+            client.global.set("token", `Bearer ${m[1]}`);
+        }
+    }
+%}
+
+### 7) 현재 사용자 프로필 확인(로그인 후)
+GET {{host}}/api/auth/me
+Accept: application/json
+Authorization: {{token}}
+
+> {%
+    client.test("현재 사용자 프로필(로그인 후) - 200", () => {
+        client.assert(response.status === 200, "Status must be 200 OK");
+    });
+%}
+
+### 8) 로그아웃
+POST {{host}}/api/auth/logout
+Accept: application/json
+Authorization: {{token}}
+
+> {%
+    client.test("logout - 200", () => {
+        client.assert(response.status === 200, "Status must be 200 OK");
+    });
+%}
+
+### (선택) Google OAuth URL 발급
+GET {{host}}/api/auth/google/url?scope=openid%20email%20profile&redirectAfter=%2F
+Accept: application/json
+
+> {%
+    client.test("구글 인증 URL 발급 - 200", () => {
+        client.assert(response.status === 200, "Status must be 200 OK");
+        client.assert(!!response.body.data.authorizationUrl, "authorizationUrl must exist");
+        client.log("STATE:", response.body.data.state)
+    });
+%}

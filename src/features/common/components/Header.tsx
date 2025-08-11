@@ -6,10 +6,31 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { useEffect } from "react";
+import { useAuthStore } from "../../../store/auth";
 
 const Header = () => {
   const pathname = usePathname();
   const isMyProfilePage = pathname === "/my-profile";
+
+  // 개별 selector 사용으로 서버 스냅샷 안정화
+  const user = useAuthStore((s) => s.user);
+  const token = useAuthStore((s) => s.token);
+  const initializeFromStorage = useAuthStore((s) => s.initializeFromStorage);
+  const fetchProfile = useAuthStore((s) => s.fetchProfile);
+  const loginWithGoogle = useAuthStore((s) => s.loginWithGoogle);
+  const signOut = useAuthStore((s) => s.signOut);
+
+  useEffect(() => {
+    initializeFromStorage();
+  }, [initializeFromStorage]);
+
+  useEffect(() => {
+    if (token && !user) {
+      fetchProfile().catch(() => {});
+    }
+  }, [token, user, fetchProfile]);
+
   return (
     <header className="w-full border-b shadow-sm px-4 py-3 flex flex-col sm:flex-row justify-between items-center">
       <div className="flex items-center gap-4">
@@ -17,7 +38,7 @@ const Header = () => {
           <>
             <Link href="/my-profile">
               <Image
-                src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRgorcLvoZtje4lJsMPMrMWfKLkWnB1EGmETQ&s"
+                src={user?.picture || "https://via.placeholder.com/56"}
                 alt="프로필"
                 width={56}
                 height={56}
@@ -25,24 +46,34 @@ const Header = () => {
               />
             </Link>
             <div>
-              <div className="font-bold text-lg">더피</div>
+              <div className="font-bold text-lg">
+                {user?.name || "로그인이 필요합니다"}
+              </div>
               <div className="text-sm text-muted-foreground">
-                케데헌 맵 | 7/13 스탬프 · 2,450 포인트
+                {user?.email || "Google 계정으로 로그인하세요"}
               </div>
-              <div className="text-xs text-primary">
-                Top 5% of K-pop Explorers
-              </div>
+              {user && (
+                <div className="text-xs text-primary">
+                  {user.provider?.toUpperCase()}
+                </div>
+              )}
             </div>
             <div className="mt-4 sm:mt-0">
-              <div className="text-sm font-semibold text-foreground mb-1">
-                🎯 다음 목표
-              </div>
-              <div className="w-64 h-2 bg-secondary rounded-full overflow-hidden mb-1">
-                <div className="bg-primary h-full w-[80%]" />
-              </div>
-              <div className="w-64 h-2 bg-secondary rounded-full overflow-hidden">
-                <div className="bg-accent h-full w-[65%]" />
-              </div>
+              {!user ? (
+                <button
+                  className="text-sm border rounded px-3 py-1 text-foreground hover:bg-muted transition"
+                  onClick={() => loginWithGoogle("/my-profile")}
+                >
+                  구글로 로그인
+                </button>
+              ) : (
+                <button
+                  className="text-sm border rounded px-3 py-1 text-foreground hover:bg-muted transition"
+                  onClick={() => signOut()}
+                >
+                  로그아웃
+                </button>
+              )}
             </div>
           </>
         )}
