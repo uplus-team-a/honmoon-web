@@ -1,0 +1,101 @@
+### 0) Basic 인증으로 테스트용 세션 토큰 발급
+POST {{host}}/api/auth/test-token
+Accept: application/json
+Authorization: {{basicToken}}
+
+> {%
+    client.test("Basic 테스트 토큰 발급 - 200", () => {
+        client.assert(response.status === 200, "Status must be 200 OK");
+        client.assert(!!response.body.data.token, "token must exist");
+    });
+    const tok = response.body.data.token;
+    client.global.set("token", `Bearer ${tok}`);
+%}
+
+### 현재 사용자 프로필 확인(테스트 토큰)
+GET {{host}}/api/auth/me
+Accept: application/json
+Authorization: {{token}}
+
+> {%
+client.test("현재 사용자 프로필(테스트 토큰) - 200", () => {
+  client.assert(response.status === 200, "Status must be 200 OK");
+});
+%}
+
+### 사용자 미션 활동 상세 조회
+GET {{host}}/api/user-activities/1
+Accept: application/json
+Authorization: {{token}}
+
+> {%
+    client.test("사용자 미션 활동 상세 조회 - 200 또는 404", () => {
+        client.assert([200, 404].includes(response.status), "Expected 200 or 404");
+    });
+%}
+
+### 퀴즈 답변 제출 (텍스트)
+POST {{host}}/api/missions/1/submit-quiz?textAnswer=정답
+Accept: application/json
+Authorization: {{token}}
+
+> {%
+    client.test("퀴즈 답변 제출(텍스트) - 200", () => {
+        client.assert(response.status === 200, "Status must be 200 OK");
+    });
+%}
+
+### 퀴즈 답변 제출 (선택지)
+POST {{host}}/api/missions/1/submit-quiz?selectedChoiceIndex=0
+Accept: application/json
+Authorization: {{token}}
+
+> {%
+    client.test("퀴즈 답변 제출(선택지) - 200", () => {
+        client.assert(response.status === 200, "Status must be 200 OK");
+    });
+%}
+
+### 퀴즈 답변 제출 (이미지)
+POST {{host}}/api/missions/1/submit-quiz?uploadedImageUrl=https://example.com/image.jpg
+Accept: application/json
+Authorization: {{token}}
+
+> {%
+    client.test("퀴즈 답변 제출(이미지) - 200", () => {
+        client.assert(response.status === 200, "Status must be 200 OK");
+    });
+%}
+
+### 내 퀴즈 답변 제출 (텍스트)
+POST {{host}}/api/missions/1/submit-quiz/me?textAnswer=정답
+Accept: application/json
+Authorization: {{token}}
+
+> {%
+    client.test("내 퀴즈 답변 제출(텍스트) - 200", () => {
+        client.assert(response.status === 200, "Status must be 200 OK");
+    });
+%}
+
+### 내 퀴즈 답변 제출 (선택지)
+POST {{host}}/api/missions/1/submit-quiz/me?selectedChoiceIndex=0
+Accept: application/json
+Authorization: {{token}}
+
+> {%
+    client.test("내 퀴즈 답변 제출(선택지) - 200", () => {
+        client.assert(response.status === 200, "Status must be 200 OK");
+    });
+%}
+
+### 내 퀴즈 답변 제출 (이미지)
+POST {{host}}/api/missions/1/submit-quiz/me?uploadedImageUrl=https://example.com/image.jpg
+Accept: application/json
+Authorization: {{token}}
+
+> {%
+    client.test("내 퀴즈 답변 제출(이미지) - 200", () => {
+        client.assert(response.status === 200, "Status must be 200 OK");
+    });
+%} 

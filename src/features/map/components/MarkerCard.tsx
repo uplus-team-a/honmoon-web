@@ -27,14 +27,33 @@ interface MarkerCardProps {
   onToggleVisibility?: () => void;
 }
 
-export const MarkerCard: React.FC<MarkerCardProps> = ({
+const InnerMarkerCard: React.FC<MarkerCardProps> = ({
   marker,
   onClick,
   isActive = false,
   isVisible = true,
   onToggleVisibility,
 }) => {
-  const { title, image, description } = marker;
+  const { title, image, description, source, missions } = marker;
+
+  const renderMissionIcon = (missionType?: string) => {
+    switch (missionType) {
+      case "QUIZ_MULTIPLE_CHOICE":
+        return "📝";
+      case "QUIZ_TEXT_INPUT":
+        return "✍️";
+      case "QUIZ_IMAGE_UPLOAD":
+        return "🖼️";
+      case "PLACE_VISIT":
+        return "📍";
+      case "PHOTO_UPLOAD":
+        return "📸";
+      case "SURVEY":
+        return "📊";
+      default:
+        return "🎯";
+    }
+  };
 
   const handleToggleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -43,12 +62,14 @@ export const MarkerCard: React.FC<MarkerCardProps> = ({
 
   return (
     <div
-      className={`group flex flex-col rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-all bg-white cursor-pointer transform hover:-translate-y-1 duration-200 ${
+      className={`group flex flex-col rounded-3xl overflow-hidden shadow-md hover:shadow-xl transition-all cursor-pointer transform hover:-translate-y-1.5 duration-200 ${
         isActive ? "ring-2 ring-primary shadow-lg" : ""
-      } ${!isVisible ? "opacity-60" : ""}`}
+      } ${!isVisible ? "opacity-60" : ""} ${
+        source === "kakao" ? "bg-neutral-50 opacity-95" : "bg-white"
+      }`}
       onClick={onClick}
     >
-      <div className="relative w-full h-[160px]">
+      <div className="relative w-full h-[200px]">
         <MarkerImage
           src={image}
           alt={title}
@@ -77,36 +98,69 @@ export const MarkerCard: React.FC<MarkerCardProps> = ({
           </div>
         )}
       </div>
-      <div className="p-4 flex flex-col justify-between flex-grow">
+      <div className="p-5 flex flex-col justify-between flex-grow">
         <div>
           <div className="flex justify-between items-start">
-            <h3 className="font-bold text-lg text-gray-900">{title}</h3>
+            {title && (
+              <h3
+                className="text-xl font-extrabold bg-gradient-to-r from-neutral-900 to-neutral-600 bg-clip-text text-transparent tracking-tight"
+                title={title}
+              >
+                {title}
+              </h3>
+            )}
           </div>
-          <p className="text-sm text-gray-600 mt-2 line-clamp-2">
+          <p className="text-[13px] text-gray-600 mt-2 line-clamp-2">
             {description ?? "설명이 없습니다."}
           </p>
+          {/* 지도 마커에 위경도 노출, 카드에선 비표시 */}
         </div>
-        <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
-          <div className="text-sm text-primary font-medium flex items-center">
-            <span className="mr-2 flex items-center justify-center w-5 h-5 bg-primary/10 rounded-full">
-              <span className="text-primary text-xs">✓</span>
-            </span>
-            <span>스탬프 획득 (2023.11.01)</span>
+        <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
+          {/* 미션 목록(간략) */}
+          <div className="text-[12px] text-neutral-700">
+            {source === "kakao" ? (
+              <span>아직 미션이 등록되지 않았어요.</span>
+            ) : missions && missions.length > 0 ? (
+              <div className="flex items-center gap-1.5 max-w-full overflow-hidden">
+                <span className="mr-1 text-[11px] px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-800 border border-neutral-200">
+                  미션
+                </span>
+                {missions.slice(0, 6).map((m) => (
+                  <span
+                    key={m.id}
+                    title={m.title}
+                    className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-neutral-50 text-neutral-800 border border-neutral-200 shadow-sm"
+                  >
+                    {renderMissionIcon(m.missionType)}
+                  </span>
+                ))}
+                {missions.length > 6 && (
+                  <span className="ml-1 text-[12px] px-1.5 py-0.5 rounded-full bg-neutral-50 text-neutral-600 border border-neutral-200">
+                    +{missions.length - 6}
+                  </span>
+                )}
+              </div>
+            ) : null}
           </div>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-8 px-2 text-xs hover:bg-primary/10"
-            onClick={(e) => {
-              e.stopPropagation();
-              window.location.href = `/mission/${marker.id}`;
-            }}
-          >
-            <ArrowRight className="w-3 h-3 mr-1" />
-            상세보기
-          </Button>
+
+          {source === "api" ? (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-9 px-2.5 text-sm hover:bg-primary/10"
+              onClick={(e) => {
+                e.stopPropagation();
+                window.location.href = `/mission/place/${marker.id}`;
+              }}
+            >
+              <ArrowRight className="w-3.5 h-3.5 mr-1" />
+              상세보기
+            </Button>
+          ) : null}
         </div>
       </div>
     </div>
   );
 };
+
+export const MarkerCard = React.memo(InnerMarkerCard);

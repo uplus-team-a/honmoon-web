@@ -95,16 +95,12 @@ src/
 
 ## 5. 서버 연동
 
-- 서버 연동이 필요한 기능은 다음 구조를 따릅니다:
-  ```
-  features/feature-name/
-  ├── api/              # API 관련 코드
-  │   ├── client.ts     # API 클라이언트
-  │   ├── mocks.ts      # 목업 데이터
-  │   └── types.ts      # API 관련 타입
-  ```
-- 개발 중에는 `mocks.ts`에 정의된 목업 데이터를 사용합니다.
-- API 클라이언트는 실제 API와 목업 데이터를 모두 지원하도록 구현합니다.
+- 모든 API 호출은 `src/lib/apiClient.ts`의 `apiFetch`를 통해 이루어지며, 세션 토큰이 있을 경우 자동으로 `Authorization: Bearer {token}` 헤더를 첨부합니다.
+- 인증 흐름은 서버 주도 OAuth를 사용합니다.
+  - Google OAuth: `startGoogleLogin(redirectAfter)`로 서버에서 발급한 인증 URL로 리다이렉트합니다.
+  - 콜백 처리: 서버의 `/api/auth/google/callback`을 통해 세션이 생성되고, 응답의 `data.appSessionToken`을 `localStorage.appSessionToken`에 저장합니다.
+  - 이메일 매직링크: `/api/auth/signup/email`, `/api/auth/login/email/by-user`, `/api/auth/email/callback` 사용. 콜백 응답의 `data.appSessionToken`을 저장합니다.
+- 프론트는 OAuth 파라미터를 직접 다루지 않으며, 서버를 통해 로그인/회원가입이 이루어집니다.
 
 ## 6. 상태 관리
 
@@ -132,3 +128,10 @@ src/
 - 테스트는 Jest와 React Testing Library를 사용합니다.
 - 각 컴포넌트와 훅에 대한 단위 테스트를 작성합니다.
 - 테스트 파일은 해당 코드 파일과 동일한 디렉토리에 위치하며, `.test.ts` 또는 `.test.tsx` 확장자를 사용합니다.
+
+## 8. 인증 UI 가이드
+
+- 메인(`src/app/page.tsx`)에 토스 스타일의 버튼 2개를 노출합니다.
+  - "구글로 계속하기": 검은 배경, 둥근 모서리, 강한 그림자. 클릭 시 `startGoogleLogin('/my-profile')` 호출.
+  - "이메일로 로그인/회원가입": 흰 배경, 회색 보더, 눌림 효과. 클릭 시 `/signup` 링크로 이동.
+- 헤더/프로필 등 다른 화면에서의 구글 버튼은 제거하고, 로그인 필요 시 메인으로 유도합니다.
