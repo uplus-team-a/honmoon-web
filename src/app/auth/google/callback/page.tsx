@@ -2,14 +2,15 @@
 
 import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAuthStore, type AuthState } from "store/auth";
+import { handleGoogleCallback } from "../../../../services/authService";
+import { useAuthStore } from "../../../../store/auth";
 
 function GoogleCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const handleGoogleCallback = useAuthStore(
-    (s: AuthState) => s.handleGoogleCallback
-  );
+  const initializeFromStorage = useAuthStore((s) => s.initializeFromStorage);
+  const fetchProfile = useAuthStore((s) => s.fetchProfile);
+  const fetchMissionStats = useAuthStore((s) => s.fetchMissionStats);
 
   useEffect(() => {
     const code = searchParams.get("code");
@@ -18,13 +19,18 @@ function GoogleCallbackContent() {
 
     if (code && state) {
       handleGoogleCallback(code, state)
-        .then(() => router.replace(redirectAfter))
-        .catch(() => router.replace("/my-profile"));
+        .then(async () => {
+          initializeFromStorage();
+          try {
+            await Promise.all([fetchProfile(), fetchMissionStats()]);
+          } catch {}
+          router.replace(redirectAfter);
+        })
+        .catch(() => router.replace("/"));
     } else {
       router.replace("/");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [router, searchParams]);
 
   return (
     <div className="flex items-center justify-center h-[60vh]">
@@ -36,9 +42,6 @@ function GoogleCallbackContent() {
   );
 }
 
-/**
- * Google OAuth 콜백 페이지
- */
 export default function GoogleCallbackPage() {
   return (
     <Suspense fallback={<div className="p-6 text-center">로딩 중…</div>}>

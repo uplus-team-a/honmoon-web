@@ -266,6 +266,10 @@ export interface KakaoMaps {
   getCenter(): KakaoLatLng;
   setLevel(level: number): void;
   getLevel(): number;
+  /**
+   * Places 등 부가 서비스 네임스페이스
+   */
+  services?: KakaoMapsServices;
 }
 
 /**
@@ -279,4 +283,47 @@ declare global {
   interface Window {
     kakao: KakaoStatic;
   }
+}
+
+/**
+ * Kakao Places 타입 정의 (간소화 버전)
+ */
+export type KakaoPlacesStatus = "OK" | "ZERO_RESULT" | "ERROR" | string;
+
+export interface KakaoPlacesSearchResult {
+  id?: string;
+  place_name: string;
+  x: string; // lng
+  y: string; // lat
+  address_name?: string;
+  road_address_name?: string;
+}
+
+export interface KakaoPlacesPagination {
+  current: number;
+  last?: number;
+  totalCount?: number;
+  gotoPage: (page: number) => void;
+}
+
+export interface KakaoPlacesService {
+  keywordSearch: (
+    keyword: string,
+    callback: (
+      data: KakaoPlacesSearchResult[],
+      status: KakaoPlacesStatus,
+      pagination: KakaoPlacesPagination
+    ) => void,
+    options?: Record<string, unknown>
+  ) => void;
+}
+
+export interface KakaoMapsServices {
+  Places: new () => KakaoPlacesService;
+  Status: {
+    OK: KakaoPlacesStatus;
+    ZERO_RESULT: KakaoPlacesStatus;
+    ERROR: KakaoPlacesStatus;
+    [key: string]: KakaoPlacesStatus;
+  };
 }

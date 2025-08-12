@@ -1,7 +1,4 @@
 ### 0) Basic 인증으로 테스트용 세션 토큰 발급
-GET {{host}}/actuator/health
-
-### 0) Basic 인증으로 테스트용 세션 토큰 발급
 POST {{host}}/api/auth/test-token
 Accept: application/json
 Authorization: {{basicToken}}

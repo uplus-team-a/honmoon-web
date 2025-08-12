@@ -1,14 +1,16 @@
 import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 import {
-  getGoogleAuthUrl,
-  exchangeGoogleCode,
   getMe,
   logout,
-  requestEmailMagicLink,
-  verifyEmailMagicToken,
+  requestEmailSignup,
+  exchangeEmailToken,
   type ProfileResponse,
 } from "../services/authService";
+import {
+  fetchMyMissionStats,
+  type MissionStats,
+} from "../services/userService";
 
 /**
  * 인증 상태를 관리하는 Zustand 스토어
@@ -16,14 +18,17 @@ import {
 export interface AuthState {
   token: string | null;
   user: ProfileResponse | null;
+  missionStats: MissionStats | null;
   loading: boolean;
   error: string | null;
   initializeFromStorage: () => void;
   fetchProfile: () => Promise<void>;
-  loginWithGoogle: (redirectAfter?: string) => Promise<void>;
-  handleGoogleCallback: (code: string, state: string) => Promise<void>;
+  fetchMissionStats: () => Promise<void>;
   loginWithEmail: (email: string) => Promise<void>;
-  handleEmailCallback: (token: string) => Promise<void>;
+  handleEmailCallback: (
+    token: string,
+    purpose?: "signup" | "login"
+  ) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -39,6 +44,7 @@ const parseErrorMessage = (error: unknown): string => {
 export const useAuthStore = create<AuthState>((set, get) => ({
   token: null,
   user: null,
+  missionStats: null,
   loading: false,
   error: null,
 
@@ -65,40 +71,28 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  loginWithGoogle: async (redirectAfter?: string) => {
+  fetchMissionStats: async () => {
     set({ loading: true, error: null });
     try {
-      const { authorizationUrl } = await getGoogleAuthUrl(
-        redirectAfter || "/my-profile"
-      );
-      window.location.href = authorizationUrl;
+      const stats = await fetchMyMissionStats();
+      set({ missionStats: stats, loading: false });
     } catch (e: unknown) {
       set({
-        error: parseErrorMessage(e) || "로그인 URL 생성 실패",
+        error: parseErrorMessage(e) || "미션 통계 조회 실패",
         loading: false,
       });
-    }
-  },
-
-  handleGoogleCallback: async (code: string, state: string) => {
-    set({ loading: true, error: null });
-    try {
-      const data = await exchangeGoogleCode({ code, state });
-      if (typeof window !== "undefined" && data.appSessionToken) {
-        window.localStorage.setItem("appSessionToken", data.appSessionToken);
-      }
-      set({ token: data.appSessionToken || null });
-      await get().fetchProfile();
-      set({ loading: false });
-    } catch (e: unknown) {
-      set({ error: parseErrorMessage(e) || "인증 처리 실패", loading: false });
     }
   },
 
   loginWithEmail: async (email: string) => {
     set({ loading: true, error: null });
     try {
-      await requestEmailMagicLink({ email });
+      const nameFromEmail = email.split("@")[0] || "사용자";
+      let redirectUrl: string | undefined;
+      if (typeof window !== "undefined") {
+        redirectUrl = `${window.location.origin}/auth/email/callback`;
+      }
+      await requestEmailSignup({ email, name: nameFromEmail }, redirectUrl);
       set({ loading: false });
     } catch (e: unknown) {
       set({
@@ -108,10 +102,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  handleEmailCallback: async (token: string) => {
+  handleEmailCallback: async (
+    token: string,
+    purpose: "signup" | "login" = "login"
+  ) => {
     set({ loading: true, error: null });
     try {
-      const data = await verifyEmailMagicToken(token);
+      const data = await exchangeEmailToken({ token, purpose });
       if (typeof window !== "undefined" && data.appSessionToken) {
         window.localStorage.setItem("appSessionToken", data.appSessionToken);
       }

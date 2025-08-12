@@ -49,17 +49,15 @@ export const useKakaoMap = (
           window.kakao.maps.ControlPosition.TOPRIGHT
         );
 
-        // 지도가 완전히 로드된 후에 인스턴스 설정
+        // 지도가 완전히 로드된 후에 인스턴스 설정 (단 한 번)
+        let ready = false;
         window.kakao.maps.event.addListener(map, "tilesloaded", () => {
+          if (ready) return;
+          ready = true;
           mapInstanceRef.current = map;
           setIsMapLoaded(true);
           setError(null);
         });
-
-        // 백업으로 즉시 설정
-        mapInstanceRef.current = map;
-        setIsMapLoaded(true);
-        setError(null);
       } catch (err) {
         console.error("카카오맵 초기화 오류:", err);
         setError("지도를 로드하는 중 오류가 발생했습니다.");
@@ -84,18 +82,15 @@ export const useKakaoMap = (
 
       if (!existingScript) {
         const script = document.createElement("script");
-        script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${apiKey}&autoload=false`;
+        script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${apiKey}&libraries=services&autoload=false`;
         script.async = true;
 
         script.onload = () => {
-          // SDK 로드 후 약간의 지연을 두고 초기화
-          setTimeout(() => {
-            if (window.kakao && window.kakao.maps) {
-              window.kakao.maps.load(initializeMap);
-            } else {
-              setError("카카오맵 SDK를 로드하는 중 오류가 발생했습니다.");
-            }
-          }, 100);
+          if (window.kakao && window.kakao.maps) {
+            window.kakao.maps.load(initializeMap);
+          } else {
+            setError("카카오맵 SDK를 로드하는 중 오류가 발생했습니다.");
+          }
         };
 
         script.onerror = () => {

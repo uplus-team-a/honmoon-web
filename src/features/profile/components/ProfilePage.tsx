@@ -1,19 +1,15 @@
-/**
- * 사용자 프로필 페이지 컴포넌트
- */
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect } from "react";
 import { useAuthStore } from "../../../store/auth";
 
 export default function ProfilePage() {
-  // 개별 selector 사용
   const user = useAuthStore((s) => s.user);
   const token = useAuthStore((s) => s.token);
   const initializeFromStorage = useAuthStore((s) => s.initializeFromStorage);
   const fetchProfile = useAuthStore((s) => s.fetchProfile);
-  const loginWithGoogle = useAuthStore((s) => s.loginWithGoogle);
   const signOut = useAuthStore((s) => s.signOut);
 
   useEffect(() => {
@@ -27,49 +23,47 @@ export default function ProfilePage() {
   }, [token, user, fetchProfile]);
 
   return (
-    <div className="max-w-3xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-6">프로필 및 활동내역</h1>
-
-      <div className="flex items-center justify-between bg-white shadow-md rounded-xl p-4 mb-8 border">
+    <section className="w-full">
+      <div className="flex items-center justify-between rounded-2xl border border-neutral-200 bg-white p-5">
         <div className="flex items-center gap-4">
-          <img
-            src={user?.picture || "https://via.placeholder.com/80"}
-            alt="프로필 이미지"
-            className="w-20 h-20 rounded-full border"
-          />
-          <div>
-            <div className="font-bold text-lg">
+          <div className="relative h-16 w-16 overflow-hidden rounded-full border border-neutral-200 bg-neutral-50">
+            <Image
+              src={user?.picture || "https://via.placeholder.com/80"}
+              alt="프로필 이미지"
+              fill
+              sizes="64px"
+              className="object-cover"
+            />
+          </div>
+          <div className="min-w-[180px]">
+            <div className="text-[15px] font-semibold text-neutral-900">
               {user?.name || "로그인이 필요합니다"}
             </div>
-            <div className="text-sm text-gray-600">
+            <div className="text-[12px] text-neutral-500">
               {user?.email || "Google 계정으로 로그인하세요"}
             </div>
             {user && (
-              <div className="text-purple-600 text-sm mt-1">
+              <div className="mt-1 inline-flex items-center rounded-full border border-neutral-200 px-2 py-0.5 text-[10px] text-neutral-500">
                 {user.provider?.toUpperCase()}
               </div>
             )}
           </div>
         </div>
-        <div className="flex flex-col gap-2">
-          <Link href="/editProfile">
-            <button
-              className="border rounded px-4 py-1 text-sm"
-              disabled={!user}
-            >
+        <div className="flex items-center gap-2">
+          <Link href="/editProfile" className="hidden sm:block">
+            <button className="h-9 rounded-lg border border-neutral-200 px-3 text-[13px] text-neutral-900 hover:bg-neutral-50">
               프로필 관리
             </button>
           </Link>
           {!user ? (
-            <button
-              className="border rounded px-4 py-1 text-sm"
-              onClick={() => loginWithGoogle("/my-profile")}
-            >
-              구글로 로그인
-            </button>
+            <Link href="/login">
+              <button className="h-9 rounded-lg border border-neutral-200 px-3 text-[13px] text-neutral-900 hover:bg-neutral-50">
+                로그인하러 가기
+              </button>
+            </Link>
           ) : (
             <button
-              className="border rounded px-4 py-1 text-sm"
+              className="h-9 rounded-lg border border-neutral-200 px-3 text-[13px] text-neutral-900 hover:bg-neutral-50"
               onClick={() => signOut()}
             >
               로그아웃
@@ -77,6 +71,6 @@ export default function ProfilePage() {
           )}
         </div>
       </div>
-    </div>
+    </section>
   );
 }

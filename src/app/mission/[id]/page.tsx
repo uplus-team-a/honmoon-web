@@ -1,18 +1,37 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import markers from "../../../features/map/data/markers";
 import { Button } from "../../../shared/components/ui/button";
 import { MarkerImage } from "../../../shared/components/ui/marker-image";
 import { ArrowLeft, MapPin, Calendar, Star, Trophy } from "lucide-react";
+import { fetchMissionPlaceById } from "../../../services/missionService";
 
 export default function MissionPage() {
   const params = useParams();
   const router = useRouter();
   const markerId = Number(params.id);
+  const [marker, setMarker] = useState<{
+    id: number;
+    title: string;
+    lat: number;
+    lng: number;
+    imageUrl?: string;
+    description?: string;
+  } | null>(null);
 
-  const marker = markers.find((m) => m.id === markerId);
+  useEffect(() => {
+    let cancelled = false;
+    fetchMissionPlaceById(markerId)
+      .then((m) => {
+        if (cancelled) return;
+        setMarker(m);
+      })
+      .catch(() => setMarker(null));
+    return () => {
+      cancelled = true;
+    };
+  }, [markerId]);
 
   if (!marker) {
     return (
@@ -53,7 +72,7 @@ export default function MissionPage() {
         {/* 이미지 섹션 */}
         <div className="relative">
           <MarkerImage
-            src={marker.image}
+            src={marker.imageUrl}
             alt={marker.title}
             width="w-full"
             height="h-64"
@@ -132,10 +151,7 @@ export default function MissionPage() {
             <Button
               variant="outline"
               className="w-full h-12 text-base font-medium"
-              onClick={() => {
-                // 미션 완료 처리 로직
-                alert("미션 완료 처리 기능은 추후 구현 예정입니다.");
-              }}
+              onClick={() => router.push(`/quiz/${marker.id}`)}
             >
               미션 완료하기
             </Button>

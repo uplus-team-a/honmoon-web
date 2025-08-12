@@ -1,13 +1,14 @@
 import React from "react";
-import raffleItems from "features/common/data/raffleItems";
+import {
+  fetchRaffleProductById,
+  applyRaffle,
+} from "../../../services/raffleService";
 
 type PageParams = Promise<{ id: string }>;
 
 export default async function Page({ params }: { params: PageParams }) {
   const { id } = await params;
-
-  // TODO: Fetch raffle item data based on the ID from an API or data source
-  const raffleItem = raffleItems.find((item) => item.id === id);
+  const raffleItem = await fetchRaffleProductById(id).catch(() => null);
 
   if (!raffleItem) {
     return (
@@ -22,16 +23,23 @@ export default async function Page({ params }: { params: PageParams }) {
 
   return (
     <div className="max-w-screen-lg mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">{raffleItem.title}</h1>
+      <h1 className="text-2xl font-bold mb-4">{raffleItem.name}</h1>
       <img
-        src={raffleItem.imageUrl}
-        alt={raffleItem.title}
+        src={raffleItem.imageUrl || "https://via.placeholder.com/320x240"}
+        alt={raffleItem.name}
         className="w-64 mb-4"
       />
       <p className="text-gray-700">{raffleItem.description}</p>
-      <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-4">
-        응모하기
-      </button>
+      <form
+        action={async () => {
+          "use server";
+          await applyRaffle(id);
+        }}
+      >
+        <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-4">
+          응모하기
+        </button>
+      </form>
     </div>
   );
 }

@@ -25,7 +25,7 @@ interface MarkerListProps {
   onRedrawMarkers?: () => void;
 }
 
-export const MarkerList: React.FC<MarkerListProps> = ({
+const InnerMarkerList: React.FC<MarkerListProps> = ({
   markers,
   onMarkerClick,
   activeMarkerIndex = null,
@@ -33,6 +33,16 @@ export const MarkerList: React.FC<MarkerListProps> = ({
   onToggleVisibility,
   onRedrawMarkers,
 }) => {
+  const sorted = React.useMemo(() => {
+    return [...markers].sort((a, b) => {
+      const aHas = (a?.missionsCount ?? 0) > 0 ? 1 : 0;
+      const bHas = (b?.missionsCount ?? 0) > 0 ? 1 : 0;
+      if (aHas !== bHas) return bHas - aHas; // 미션 있는 장소 우선
+      const aTitle = (a?.title ?? "").toString();
+      const bTitle = (b?.title ?? "").toString();
+      return aTitle.localeCompare(bTitle);
+    });
+  }, [markers]);
   return (
     <div className="flex flex-col gap-4">
       <div className="flex justify-between items-center mb-2">
@@ -54,7 +64,7 @@ export const MarkerList: React.FC<MarkerListProps> = ({
         </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {markers.map((marker, idx) => (
+        {sorted.map((marker, idx) => (
           <MarkerCard
             key={marker.id}
             marker={marker}
@@ -70,3 +80,5 @@ export const MarkerList: React.FC<MarkerListProps> = ({
     </div>
   );
 };
+
+export const MarkerList = React.memo(InnerMarkerList);

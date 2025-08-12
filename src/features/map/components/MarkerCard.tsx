@@ -27,14 +27,14 @@ interface MarkerCardProps {
   onToggleVisibility?: () => void;
 }
 
-export const MarkerCard: React.FC<MarkerCardProps> = ({
+const InnerMarkerCard: React.FC<MarkerCardProps> = ({
   marker,
   onClick,
   isActive = false,
   isVisible = true,
   onToggleVisibility,
 }) => {
-  const { title, image, description } = marker;
+  const { title, image, description, missionsCount, source, missions } = marker;
 
   const handleToggleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -43,9 +43,11 @@ export const MarkerCard: React.FC<MarkerCardProps> = ({
 
   return (
     <div
-      className={`group flex flex-col rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-all bg-white cursor-pointer transform hover:-translate-y-1 duration-200 ${
+      className={`group flex flex-col rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-all cursor-pointer transform hover:-translate-y-1 duration-200 ${
         isActive ? "ring-2 ring-primary shadow-lg" : ""
-      } ${!isVisible ? "opacity-60" : ""}`}
+      } ${!isVisible ? "opacity-60" : ""} ${
+        source === "kakao" ? "bg-neutral-50 opacity-95" : "bg-white"
+      }`}
       onClick={onClick}
     >
       <div className="relative w-full h-[160px]">
@@ -80,33 +82,66 @@ export const MarkerCard: React.FC<MarkerCardProps> = ({
       <div className="p-4 flex flex-col justify-between flex-grow">
         <div>
           <div className="flex justify-between items-start">
-            <h3 className="font-bold text-lg text-gray-900">{title}</h3>
+            {title && (
+              <h3
+                className="text-lg font-extrabold bg-gradient-to-r from-neutral-900 to-neutral-600 bg-clip-text text-transparent"
+                title={title}
+              >
+                {title}
+              </h3>
+            )}
           </div>
           <p className="text-sm text-gray-600 mt-2 line-clamp-2">
             {description ?? "설명이 없습니다."}
           </p>
+          {/* 지도 마커에 위경도 노출, 카드에선 비표시 */}
         </div>
         <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
-          <div className="text-sm text-primary font-medium flex items-center">
-            <span className="mr-2 flex items-center justify-center w-5 h-5 bg-primary/10 rounded-full">
-              <span className="text-primary text-xs">✓</span>
-            </span>
-            <span>스탬프 획득 (2023.11.01)</span>
+          {/* 미션 목록(간략) */}
+          <div className="text-[11px] text-neutral-600">
+            {source === "kakao" ? (
+              <span>아직 미션이 등록되지 않았어요.</span>
+            ) : missions && missions.length > 0 ? (
+              <div className="flex flex-wrap gap-1 max-w-full overflow-hidden">
+                {missions.slice(0, 3).map((m) => (
+                  <span
+                    key={m.id}
+                    className="inline-flex items-center bg-neutral-100 px-2 py-0.5 rounded-full"
+                  >
+                    {m.title}
+                  </span>
+                ))}
+                {missions.length > 3 && (
+                  <span className="text-neutral-500 ml-1">
+                    외 {missions.length - 3}개
+                  </span>
+                )}
+              </div>
+            ) : null}
           </div>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-8 px-2 text-xs hover:bg-primary/10"
-            onClick={(e) => {
-              e.stopPropagation();
-              window.location.href = `/mission/${marker.id}`;
-            }}
-          >
-            <ArrowRight className="w-3 h-3 mr-1" />
-            상세보기
-          </Button>
+
+          {source === "api" ? (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 px-2 text-xs hover:bg-primary/10"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (marker.primaryMissionId) {
+                  window.location.href = `/mission/${marker.primaryMissionId}`;
+                } else {
+                  window.location.href = "/my-profile";
+                }
+              }}
+            >
+              <ArrowRight className="w-3 h-3 mr-1" />
+              상세보기
+            </Button>
+          ) : null}
         </div>
       </div>
     </div>
   );
 };
+
+export const MarkerCard = React.memo(InnerMarkerCard);

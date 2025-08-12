@@ -10,13 +10,24 @@ function EmailCallbackContent() {
   const handleEmailCallback = useAuthStore(
     (s: AuthState) => s.handleEmailCallback
   );
+  const initializeFromStorage = useAuthStore((s) => s.initializeFromStorage);
+  const fetchProfile = useAuthStore((s) => s.fetchProfile);
+  const fetchMissionStats = useAuthStore((s) => s.fetchMissionStats);
 
   useEffect(() => {
     const token = searchParams.get("token");
+    const purposeParam = searchParams.get("purpose");
+    const purpose = purposeParam === "signup" ? "signup" : "login";
     const redirectAfter = searchParams.get("redirectAfter") || "/my-profile";
     if (token) {
-      handleEmailCallback(token)
-        .then(() => router.replace(redirectAfter))
+      handleEmailCallback(token, purpose)
+        .then(async () => {
+          initializeFromStorage();
+          try {
+            await Promise.all([fetchProfile(), fetchMissionStats()]);
+          } catch {}
+          router.replace(redirectAfter);
+        })
         .catch(() => router.replace("/my-profile"));
     } else {
       router.replace("/");
