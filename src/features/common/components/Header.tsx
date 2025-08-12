@@ -26,10 +26,11 @@ const Header = () => {
   }, [initializeFromStorage]);
 
   useEffect(() => {
-    if (token && !user) {
+    if (token) {
       fetchProfile().catch(() => {});
+      fetchMissionStats().catch(() => {});
     }
-  }, [token, user, fetchProfile]);
+  }, [token, fetchProfile, fetchMissionStats]);
 
   useEffect(() => {
     if (token && !missionStats) {
@@ -41,57 +42,71 @@ const Header = () => {
     <header className="relative z-30 w-full border-b border-neutral-200/60 bg-white/80 backdrop-blur-sm px-4 py-2.5 flex flex-col sm:flex-row justify-between items-center">
       <div className="flex items-center gap-4 flex-1">
         <>
-          <Link href="/my-profile">
-            <Image
-              src={
-                user?.picture ||
-                "https://storage.googleapis.com/honmoon-bucket/image/honmmon.png"
-              }
-              alt="프로필"
-              width={44}
-              height={44}
-              className="w-11 h-11 rounded-full border border-neutral-200 object-cover"
-            />
-          </Link>
-          <div className="flex flex-col gap-1.5 min-w-[180px]">
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-[15px] text-neutral-900">
-                {user?.name || "로그인이 필요합니다"}
-              </span>
-              {user && (
-                <span className="text-[10px] rounded-full border border-neutral-200 px-1.5 py-0.5 text-neutral-500">
-                  {user.provider?.toUpperCase()}
+          {isMyProfilePage ? (
+            <Link href="/" className="inline-flex items-center">
+              <Image
+                src="https://storage.googleapis.com/honmoon-bucket/image/honmmon.png"
+                alt="홈"
+                width={44}
+                height={44}
+                className="w-11 h-11 rounded-full border border-neutral-200 object-cover"
+              />
+            </Link>
+          ) : (
+            <Link href="/my-profile">
+              <Image
+                src={
+                  user?.picture ||
+                  "https://storage.googleapis.com/honmoon-bucket/image/honmmon.png"
+                }
+                alt="프로필"
+                width={44}
+                height={44}
+                className="w-11 h-11 rounded-full border border-neutral-200 object-cover"
+              />
+            </Link>
+          )}
+          {!isMyProfilePage && (
+            <div className="flex flex-col gap-1.5 min-w-[180px]">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-[15px] text-neutral-900">
+                  {user?.name || "로그인이 필요합니다"}
                 </span>
+                {user && (
+                  <span className="text-[10px] rounded-full border border-neutral-200 px-1.5 py-0.5 text-neutral-500">
+                    {user.provider?.toUpperCase()}
+                  </span>
+                )}
+              </div>
+              <div className="text-[12px] text-neutral-500">
+                {user?.email || "Google 계정으로 로그인하세요"}
+              </div>
+              {user && missionStats && (
+                <div className="flex items-center gap-2">
+                  <div className="w-36 h-2 rounded-full bg-neutral-100 overflow-hidden">
+                    <div
+                      className="h-full bg-neutral-900 transition-[width] duration-500"
+                      style={{
+                        width: `${Math.round(
+                          (missionStats.completedMissions /
+                            Math.max(1, missionStats.totalMissions)) *
+                            100
+                        )}%`,
+                      }}
+                    />
+                  </div>
+                  <span className="text-[11px] text-neutral-500 tabular-nums">
+                    {Math.round(
+                      (missionStats.completedMissions /
+                        Math.max(1, missionStats.totalMissions)) *
+                        100
+                    )}
+                    %
+                  </span>
+                </div>
               )}
             </div>
-            <div className="text-[12px] text-neutral-500">
-              {user?.email || "Google 계정으로 로그인하세요"}
-            </div>
-            {user && missionStats && (
-              <div className="flex items-center gap-2">
-                <div className="w-36 h-2 rounded-full bg-neutral-100 overflow-hidden">
-                  <div
-                    className="h-full bg-neutral-900 transition-[width] duration-500"
-                    style={{
-                      width: `${Math.round(
-                        (missionStats.completedMissions /
-                          Math.max(1, missionStats.totalMissions)) *
-                          100
-                      )}%`,
-                    }}
-                  />
-                </div>
-                <span className="text-[11px] text-neutral-500 tabular-nums">
-                  {Math.round(
-                    (missionStats.completedMissions /
-                      Math.max(1, missionStats.totalMissions)) *
-                      100
-                  )}
-                  %
-                </span>
-              </div>
-            )}
-          </div>
+          )}
           <div className="mt-4 sm:mt-0 ml-auto">
             {!token ? (
               <div className="flex items-center gap-2">
@@ -140,14 +155,7 @@ const Header = () => {
           </div>
         </>
       </div>
-      {isMyProfilePage && (
-        <Link
-          href="/"
-          className="text-[13px] border border-neutral-200 rounded px-3 py-1.5 text-neutral-900 hover:bg-neutral-50 transition-colors"
-        >
-          홈
-        </Link>
-      )}
+      {/* 우측 상단 '홈' 버튼 제거 */}
     </header>
   );
 };

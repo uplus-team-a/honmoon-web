@@ -28,7 +28,10 @@ export default function ProfilePage() {
         <div className="flex items-center gap-4">
           <div className="relative h-16 w-16 overflow-hidden rounded-full border border-neutral-200 bg-neutral-50">
             <Image
-              src={user?.picture || "https://via.placeholder.com/80"}
+              src={
+                user?.picture ||
+                "https://storage.googleapis.com/honmoon-bucket/image/honmmon.png"
+              }
               alt="프로필 이미지"
               fill
               sizes="64px"

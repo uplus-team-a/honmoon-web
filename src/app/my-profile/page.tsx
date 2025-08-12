@@ -8,7 +8,10 @@ import CustomerCenterInfo from "../../features/profile/components/CustomerCenter
 import { useAuthStore } from "../../store/auth";
 import { fetchMyActivities } from "../../services/activityService";
 import { fetchMyPoints } from "../../services/userService";
-import { fetchMyRaffleApplications } from "../../services/raffleService";
+import {
+  fetchMyRaffleApplications,
+  fetchRaffleProductById,
+} from "../../services/raffleService";
 
 export default function MyProfileRoute() {
   const token = useAuthStore((s) => s.token);
@@ -66,14 +69,33 @@ export default function MyProfileRoute() {
             }))
           );
           setPoints(pts);
+          const uniqueProductIds = Array.from(
+            new Set(apps.map((a) => String(a.raffleProductId)))
+          );
+          const productList = await Promise.all(
+            uniqueProductIds.map((id) =>
+              fetchRaffleProductById(id).catch(() => null)
+            )
+          );
+          const productMap = new Map(
+            productList
+              .filter((p): p is NonNullable<typeof p> => !!p)
+              .map((p) => [String(p.id), p])
+          );
+
           setRaffles(
-            apps.map((ap) => ({
-              id: String(ap.id),
-              productName: String(ap.raffleProductId),
-              productImageUrl: "https://via.placeholder.com/240x240",
-              appliedAt: ap.appliedAt ? ap.appliedAt.substring(0, 10) : "",
-              status: ap.status,
-            }))
+            apps.map((ap) => {
+              const pid = String(ap.raffleProductId);
+              const prod = productMap.get(pid);
+              return {
+                id: String(ap.id),
+                productName: prod?.name || pid,
+                productImageUrl:
+                  prod?.imageUrl || "https://via.placeholder.com/240x240",
+                appliedAt: ap.appliedAt ? ap.appliedAt.substring(0, 10) : "",
+                status: ap.status,
+              };
+            })
           );
         }
       } finally {

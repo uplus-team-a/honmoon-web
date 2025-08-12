@@ -14,8 +14,6 @@ export default function MissionPage() {
   const [marker, setMarker] = useState<{
     id: number;
     title: string;
-    lat: number;
-    lng: number;
     imageUrl?: string;
     description?: string;
   } | null>(null);
@@ -94,14 +92,12 @@ export default function MissionPage() {
             </p>
           </div>
 
-          {/* 위치 정보 */}
+          {/* 위치 정보: 위경도 텍스트 제거 */}
           <div className="flex items-center mb-4 p-4 bg-gray-50 rounded-xl">
             <MapPin className="w-5 h-5 text-primary mr-3 flex-shrink-0" />
             <div>
               <div className="font-medium text-gray-900">위치</div>
-              <div className="text-sm text-gray-600">
-                위도: {marker.lat.toFixed(6)}, 경도: {marker.lng.toFixed(6)}
-              </div>
+              <div className="text-sm text-gray-600">지도에서 확인하세요</div>
             </div>
           </div>
 

@@ -33,15 +33,17 @@ const InnerMarkerList: React.FC<MarkerListProps> = ({
   onToggleVisibility,
   onRedrawMarkers,
 }) => {
-  const sorted = React.useMemo(() => {
-    return [...markers].sort((a, b) => {
-      const aHas = (a?.missionsCount ?? 0) > 0 ? 1 : 0;
-      const bHas = (b?.missionsCount ?? 0) > 0 ? 1 : 0;
-      if (aHas !== bHas) return bHas - aHas; // 미션 있는 장소 우선
-      const aTitle = (a?.title ?? "").toString();
-      const bTitle = (b?.title ?? "").toString();
-      return aTitle.localeCompare(bTitle);
-    });
+  const sortedEntries = React.useMemo(() => {
+    return markers
+      .map((m, i) => ({ marker: m, originalIndex: i }))
+      .sort((a, b) => {
+        const aHas = (a.marker?.missionsCount ?? 0) > 0 ? 1 : 0;
+        const bHas = (b.marker?.missionsCount ?? 0) > 0 ? 1 : 0;
+        if (aHas !== bHas) return bHas - aHas; // 미션 있는 장소 우선
+        const aTitle = (a.marker?.title ?? "").toString();
+        const bTitle = (b.marker?.title ?? "").toString();
+        return aTitle.localeCompare(bTitle);
+      });
   }, [markers]);
   return (
     <div className="flex flex-col gap-4">
@@ -64,15 +66,17 @@ const InnerMarkerList: React.FC<MarkerListProps> = ({
         </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {sorted.map((marker, idx) => (
+        {sortedEntries.map(({ marker, originalIndex }) => (
           <MarkerCard
             key={marker.id}
             marker={marker}
-            onClick={() => onMarkerClick(idx)}
-            isActive={activeMarkerIndex === idx}
-            isVisible={visibleMarkers.includes(idx)}
+            onClick={() => onMarkerClick(originalIndex)}
+            isActive={activeMarkerIndex === originalIndex}
+            isVisible={visibleMarkers.includes(originalIndex)}
             onToggleVisibility={
-              onToggleVisibility ? () => onToggleVisibility(idx) : undefined
+              onToggleVisibility
+                ? () => onToggleVisibility(originalIndex)
+                : undefined
             }
           />
         ))}

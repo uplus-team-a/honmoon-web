@@ -258,7 +258,10 @@ export function isAuthenticated(): boolean {
  */
 export async function startGoogleLogin(redirectAfter = "/"): Promise<void> {
   if (typeof window === "undefined") return;
-  const frontendCallbackUrl = `${window.location.origin}/auth/google/callback`;
+  const envCallback =
+    process.env.NEXT_PUBLIC_FRONTEND_CALLBACK_URL ||
+    "https://honmoon.site/auth/google/callback";
+  const frontendCallbackUrl = envCallback;
   const { authorizationUrl } = await getGoogleAuthUrl({
     redirectAfter,
     frontendCallbackUrl,

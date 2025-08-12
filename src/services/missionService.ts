@@ -22,6 +22,7 @@ export interface MissionSummary {
   description?: string;
   quizType?: "TEXT" | "CHOICE" | "IMAGE" | string;
 }
+export type MissionListItem = MissionSummary;
 
 export interface MissionDetail {
   id: number;

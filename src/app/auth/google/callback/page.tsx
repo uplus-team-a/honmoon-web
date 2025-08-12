@@ -30,7 +30,13 @@ function GoogleCallbackContent() {
     } else {
       router.replace("/");
     }
-  }, [router, searchParams]);
+  }, [
+    router,
+    searchParams,
+    initializeFromStorage,
+    fetchProfile,
+    fetchMissionStats,
+  ]);
 
   return (
     <div className="flex items-center justify-center h-[60vh]">

@@ -3,10 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "../../store/auth";
-import {
-  startGoogleLogin,
-  loginWithTestToken,
-} from "../../services/authService";
+import { startGoogleLogin } from "../../services/authService";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -59,21 +56,6 @@ export default function LoginPage() {
         >
           Google로 계속하기
         </button>
-        <button
-          onClick={async () => {
-            setLoading(true);
-            try {
-              await loginWithTestToken();
-              router.replace("/my-profile");
-            } finally {
-              setLoading(false);
-            }
-          }}
-          className="h-10 rounded-lg px-4 bg-blue-600 text-white text-[14px] hover:bg-blue-700"
-        >
-          개발용 토큰으로 바로 로그인
-        </button>
-
         {message && <div className="text-sm text-green-600">{message}</div>}
         {error && <div className="text-sm text-red-600">{error}</div>}
       </div>

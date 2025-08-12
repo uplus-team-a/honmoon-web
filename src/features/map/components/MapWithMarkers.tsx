@@ -99,44 +99,24 @@ const MapWithMarkers: React.FC<MapWithMarkersProps> = ({ focusMarkerId }) => {
       try {
         const places = await fetchMissionPlaces();
         if (cancelled) return;
-        const mapped = await Promise.all(
-          places.map(async (place) => {
-            const p: MissionPlaceLike = place as unknown as MissionPlaceLike;
-            const title: string = p.title ?? p.name ?? "";
-            const lat: number = (p.lat ?? p.latitude)!;
-            const lng: number = (p.lng ?? p.longitude)!;
-            const image: string = p.imageUrl ?? p.image ?? DEFAULT_PLACE_IMAGE;
-            const description: string = p.description ?? p.location ?? "";
-            try {
-              const missions = await fetchMissionsByPlaceId(place.id);
-              return {
-                id: place.id,
-                title,
-                lat,
-                lng,
-                image,
-                description,
-                missionsCount: missions.length,
-                primaryMissionId: missions?.[0]?.id,
-                markerStyle: { type: "primary" as const },
-                source: "api" as const,
-              } as Marker;
-            } catch {
-              return {
-                id: place.id,
-                title,
-                lat,
-                lng,
-                image,
-                description,
-                missionsCount: 0,
-                primaryMissionId: undefined,
-                markerStyle: { type: "primary" as const },
-                source: "api" as const,
-              } as Marker;
-            }
-          })
-        );
+        const mapped = places.map((place) => {
+          const p: MissionPlaceLike = place as unknown as MissionPlaceLike;
+          const title: string = p.title ?? p.name ?? "";
+          const lat: number = (p.lat ?? p.latitude)!;
+          const lng: number = (p.lng ?? p.longitude)!;
+          const image: string = p.imageUrl ?? p.image ?? DEFAULT_PLACE_IMAGE;
+          const description: string = p.description ?? p.location ?? "";
+          return {
+            id: place.id,
+            title,
+            lat,
+            lng,
+            image,
+            description,
+            markerStyle: { type: "primary" as const },
+            source: "api" as const,
+          } as Marker;
+        });
         setRemoteMarkers(mapped);
         setVisibleMarkers(mapped.map((_, idx) => idx));
       } catch {}
@@ -232,7 +212,7 @@ const MapWithMarkers: React.FC<MapWithMarkersProps> = ({ focusMarkerId }) => {
                     }
                   })
                 );
-                const limited = apiMapped.slice(0, 12);
+                const limited = apiMapped.slice(0, 8);
                 setRemoteMarkers(limited);
                 setVisibleMarkers(limited.map((_, idx) => idx));
                 if (mapInstanceRef.current && limited[0]) {
@@ -300,7 +280,7 @@ const MapWithMarkers: React.FC<MapWithMarkersProps> = ({ focusMarkerId }) => {
               );
 
               let merged: Marker[] = [...apiMapped];
-              if (merged.length < 12) {
+              if (merged.length < 8) {
                 const kakaoMapped: Marker[] = await new Promise(
                   (resolve: (value: Marker[]) => void) => {
                     places.keywordSearch(keyword, async (data, status) => {
@@ -308,7 +288,7 @@ const MapWithMarkers: React.FC<MapWithMarkersProps> = ({ focusMarkerId }) => {
                         resolve([] as Marker[]);
                         return;
                       }
-                      const top = data.slice(0, 12 - merged.length);
+                      const top = data.slice(0, 8 - merged.length);
                       const k: Marker[] = await Promise.all(
                         top.map(async (p) => {
                           const lat = parseFloat(p.y);
@@ -334,9 +314,9 @@ const MapWithMarkers: React.FC<MapWithMarkersProps> = ({ focusMarkerId }) => {
                     });
                   }
                 );
-                merged = [...merged, ...kakaoMapped].slice(0, 12);
+                merged = [...merged, ...kakaoMapped].slice(0, 8);
               } else {
-                merged = merged.slice(0, 12);
+                merged = merged.slice(0, 8);
               }
 
               setRemoteMarkers(merged);
@@ -416,15 +396,15 @@ const MapWithMarkers: React.FC<MapWithMarkersProps> = ({ focusMarkerId }) => {
 
         {/* 검색창 (지도 하단 중앙 오버레이) */}
         <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 z-10 w-[94%] sm:w-[70%] md:w-[60%] lg:w-[50%]">
-          <div className="pointer-events-auto flex items-center gap-2 bg-white/95 border border-neutral-300 rounded-2xl shadow-lg px-3 py-2 backdrop-blur-sm">
+          <div className="pointer-events-auto flex items-center gap-2 bg-white/95 border border-neutral-300 rounded-2xl shadow-lg px-3 py-2 backdrop-blur-sm transition-all duration-200 hover:shadow-xl hover:scale-[1.02] hover:ring-2 hover:ring-neutral-300 focus-within:shadow-2xl focus-within:scale-[1.02]">
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="장소 검색 (예: 한강)"
-              className="flex-1 h-10 rounded-xl border border-neutral-200 px-3 text-[14px] bg-white text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-300"
+              className="flex-1 h-10 rounded-xl border border-neutral-200 px-3 text-[14px] bg-white text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-300 transition-colors"
             />
             <button
-              className="h-10 rounded-xl px-4 bg-neutral-900 text-white text-[14px] hover:bg-black disabled:opacity-60"
+              className="h-10 rounded-xl px-4 bg-neutral-900 text-white text-[14px] hover:bg-black disabled:opacity-60 transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-[1px]"
               disabled={isSearching}
               onClick={async () => {
                 if (!query.trim()) return;
@@ -476,7 +456,7 @@ const MapWithMarkers: React.FC<MapWithMarkersProps> = ({ focusMarkerId }) => {
                         }
                       })
                     );
-                    const limited = apiMapped.slice(0, 12);
+                    const limited = apiMapped.slice(0, 8);
                     setRemoteMarkers(limited);
                     setVisibleMarkers(limited.map((_, idx) => idx));
                     if (mapInstanceRef.current && limited[0]) {
@@ -545,7 +525,7 @@ const MapWithMarkers: React.FC<MapWithMarkersProps> = ({ focusMarkerId }) => {
                   );
 
                   let merged: Marker[] = [...apiMapped];
-                  if (merged.length < 12) {
+                  if (merged.length < 8) {
                     const kakaoMapped: Marker[] = await new Promise(
                       (resolve: (value: Marker[]) => void) => {
                         places.keywordSearch(keyword, async (data, status) => {
@@ -553,7 +533,7 @@ const MapWithMarkers: React.FC<MapWithMarkersProps> = ({ focusMarkerId }) => {
                             resolve([] as Marker[]);
                             return;
                           }
-                          const top = data.slice(0, 12 - merged.length);
+                          const top = data.slice(0, 8 - merged.length);
                           const k: Marker[] = await Promise.all(
                             top.map(async (p) => {
                               const lat = parseFloat(p.y);
@@ -579,9 +559,9 @@ const MapWithMarkers: React.FC<MapWithMarkersProps> = ({ focusMarkerId }) => {
                         });
                       }
                     );
-                    merged = [...merged, ...kakaoMapped].slice(0, 12);
+                    merged = [...merged, ...kakaoMapped].slice(0, 8);
                   } else {
-                    merged = merged.slice(0, 12);
+                    merged = merged.slice(0, 8);
                   }
 
                   setRemoteMarkers(merged);
@@ -632,10 +612,10 @@ const MapWithMarkers: React.FC<MapWithMarkersProps> = ({ focusMarkerId }) => {
 
       {!error && (
         <MarkerList
-          markers={remoteMarkers.slice(0, 12)}
+          markers={remoteMarkers.slice(0, 8)}
           onMarkerClick={handleMarkerFocus}
           activeMarkerIndex={activeMarkerIndex}
-          visibleMarkers={visibleMarkers.filter((i) => i < 12)}
+          visibleMarkers={visibleMarkers.filter((i) => i < 8)}
           onToggleVisibility={toggleMarkerVisibility}
           onRedrawMarkers={redrawMarkers}
         />
