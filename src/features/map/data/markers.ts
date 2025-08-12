@@ -11,7 +11,7 @@ export type Marker = {
   missionsCount?: number;
   primaryMissionId?: number;
   source?: "api" | "kakao"; // 데이터 출처
-  missions?: Array<{ id: number; title: string }>; // 간단 미션 목록
+  missions?: Array<{ id: number; title: string; missionType?: string }>; // 간략 미션 목록
 };
 
 const markers: Marker[] = [];

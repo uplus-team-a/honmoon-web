@@ -7,11 +7,12 @@ import { getSessionToken, startGoogleLogin } from "./authService";
 
 export interface MissionPlaceSummary {
   id: number;
-  title: string;
-  lat: number;
-  lng: number;
-  imageUrl?: string;
-  description?: string;
+  title: string; // 호환: name -> title 매핑
+  lat: number; // 호환: latitude -> lat
+  lng: number; // 호환: longitude -> lng
+  imageUrl?: string; // 호환: image -> imageUrl
+  description?: string; // 호환: location -> description
+  missions?: MissionSummary[]; // 상세 포함 응답
 }
 
 export type MissionPlaceDetail = MissionPlaceSummary;
@@ -109,9 +110,9 @@ export async function fetchMissionPlaceById(
 
 export async function fetchMissionsByPlaceId(
   id: number
-): Promise<MissionSummary[]> {
+): Promise<MissionDetail[]> {
   try {
-    const res = await apiFetch<ApiListResponse<MissionSummary>>(
+    const res = await apiFetch<ApiListResponse<MissionDetail>>(
       `/api/mission-places/${id}/missions`,
       { method: "GET", ...authOptionsForRequest() }
     );
@@ -160,6 +161,19 @@ export async function submitQuizImage(
   const query = new URLSearchParams({ uploadedImageUrl });
   const res = await apiFetch<ApiItemResponse<SubmitQuizResult>>(
     `/api/user-activities/missions/${missionId}/submit-quiz?${query.toString()}`,
+    { method: "POST", ...authOptionsForRequest() }
+  );
+  return res.data;
+}
+
+/**
+ * 입력값 없이 퀴즈 제출 (PLACE_VISIT 등)
+ */
+export async function submitQuizNoInput(
+  missionId: number
+): Promise<SubmitQuizResult> {
+  const res = await apiFetch<ApiItemResponse<SubmitQuizResult>>(
+    `/api/user-activities/missions/${missionId}/submit-quiz`,
     { method: "POST", ...authOptionsForRequest() }
   );
   return res.data;

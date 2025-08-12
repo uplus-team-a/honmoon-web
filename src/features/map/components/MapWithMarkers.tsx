@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback, useEffect } from "react";
 import markers, { type Marker } from "../data/markers";
+// 미션 테이블 패널은 상세 페이지에서만 사용
 
 type MissionPlaceLike = {
   id: number;
@@ -65,6 +66,8 @@ const MapWithMarkers: React.FC<MapWithMarkersProps> = ({ focusMarkerId }) => {
     activeMarkerIndex,
   } = useKakaoMarkers(mapInstanceRef, remoteMarkers);
 
+  // 상세 페이지에서만 미션 테이블을 노출합니다
+
   // 지도가 로드되면 마커를 다시 그리기
   useEffect(() => {
     if (isMapLoaded) {
@@ -100,12 +103,29 @@ const MapWithMarkers: React.FC<MapWithMarkersProps> = ({ focusMarkerId }) => {
         const places = await fetchMissionPlaces();
         if (cancelled) return;
         const mapped = places.map((place) => {
-          const p: MissionPlaceLike = place as unknown as MissionPlaceLike;
+          const p: MissionPlaceLike & {
+            missions?: Array<{
+              id: number;
+              title: string;
+              missionType?: string;
+            }>;
+          } = place as unknown as MissionPlaceLike as MissionPlaceLike & {
+            missions?: Array<{
+              id: number;
+              title: string;
+              missionType?: string;
+            }>;
+          };
           const title: string = p.title ?? p.name ?? "";
           const lat: number = (p.lat ?? p.latitude)!;
           const lng: number = (p.lng ?? p.longitude)!;
           const image: string = p.imageUrl ?? p.image ?? DEFAULT_PLACE_IMAGE;
           const description: string = p.description ?? p.location ?? "";
+          const missions = (p.missions || []) as Array<{
+            id: number;
+            title: string;
+            missionType?: string;
+          }>;
           return {
             id: place.id,
             title,
@@ -115,6 +135,13 @@ const MapWithMarkers: React.FC<MapWithMarkersProps> = ({ focusMarkerId }) => {
             description,
             markerStyle: { type: "primary" as const },
             source: "api" as const,
+            missionsCount: missions.length,
+            primaryMissionId: missions?.[0]?.id,
+            missions: missions.slice(0, 5).map((m) => ({
+              id: m.id,
+              title: m.title,
+              missionType: m.missionType,
+            })),
           } as Marker;
         });
         setRemoteMarkers(mapped);

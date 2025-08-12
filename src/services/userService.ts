@@ -38,6 +38,48 @@ export interface ApiListResponse<T> {
   message: string;
 }
 
+export interface UserProfileResponse {
+  id: string;
+  email: string;
+  nickname?: string;
+  totalPoints: number;
+  totalActivities: number;
+  profileImageUrl?: string;
+  isActive: boolean;
+  createdAt: string;
+  modifiedAt: string;
+}
+
+export interface UserProfileSummaryResponse {
+  profile: UserProfileResponse;
+  pointsSummary: {
+    currentPoints: number;
+    totalEarned: number;
+    totalUsed: number;
+  };
+  recentActivities: Array<{
+    id: number;
+    userId: string;
+    placeId?: number | null;
+    missionId?: number | null;
+    description?: string | null;
+    isCorrect?: boolean | null;
+    isCompleted?: boolean;
+    pointsEarned?: number;
+    uploadedImageUrl?: string | null;
+    createdAt: string;
+  }>;
+  recentPointHistory: Array<{
+    id: number;
+    userId: string;
+    points: number;
+    description: string;
+    createdAt: string;
+  }>;
+}
+
+export type UserProfileDetailResponse = UserProfileSummaryResponse;
+
 /**
  * 내 프로필 조회
  * - GET /api/users/me
@@ -97,5 +139,21 @@ export async function updateMyProfile(params: {
     method: "PATCH",
     body: JSON.stringify(params),
   });
+  return res.data;
+}
+
+export async function fetchMyProfileSummary(): Promise<UserProfileSummaryResponse> {
+  const res = await apiFetch<ApiItemResponse<UserProfileSummaryResponse>>(
+    "/api/users/me/profile/summary",
+    { method: "GET" }
+  );
+  return res.data;
+}
+
+export async function fetchMyProfileDetail(): Promise<UserProfileDetailResponse> {
+  const res = await apiFetch<ApiItemResponse<UserProfileDetailResponse>>(
+    "/api/users/me/profile/detail",
+    { method: "GET" }
+  );
   return res.data;
 }

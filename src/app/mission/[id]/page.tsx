@@ -4,42 +4,69 @@ import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "../../../shared/components/ui/button";
 import { MarkerImage } from "../../../shared/components/ui/marker-image";
-import { ArrowLeft, MapPin, Calendar, Star, Trophy } from "lucide-react";
-import { fetchMissionPlaceById } from "../../../services/missionService";
+import { ArrowLeft } from "lucide-react";
+import {
+  fetchMissionById,
+  submitQuizText,
+  submitQuizChoice,
+  submitQuizImage,
+  submitQuizNoInput,
+  type MissionDetail,
+} from "../../../services/missionService";
+
+function TypeBadge({ type }: { type: string }) {
+  const map: Record<string, string> = {
+    QUIZ_MULTIPLE_CHOICE: "📝",
+    QUIZ_TEXT_INPUT: "✍️",
+    QUIZ_IMAGE_UPLOAD: "🖼️",
+    PLACE_VISIT: "📍",
+    PHOTO_UPLOAD: "📸",
+    SURVEY: "📊",
+  };
+  return (
+    <span
+      className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-neutral-100 text-neutral-700 mr-2"
+      title={type}
+    >
+      {map[type] || "🎯"}
+    </span>
+  );
+}
 
 export default function MissionPage() {
   const params = useParams();
   const router = useRouter();
-  const markerId = Number(params.id);
-  const [marker, setMarker] = useState<{
-    id: number;
-    title: string;
-    imageUrl?: string;
-    description?: string;
-  } | null>(null);
+  const missionId = Number(params.id);
+  const [mission, setMission] = useState<MissionDetail | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [textAnswer, setTextAnswer] = useState("");
+  const [choiceIndex, setChoiceIndex] = useState<number>(0);
+  const [imageUrl, setImageUrl] = useState("");
+  const [resultMsg, setResultMsg] = useState<string>("");
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    fetchMissionPlaceById(markerId)
+    fetchMissionById(missionId)
       .then((m) => {
         if (cancelled) return;
-        setMarker(m);
+        setMission(m);
       })
-      .catch(() => setMarker(null));
+      .catch(() => setMission(null));
     return () => {
       cancelled = true;
     };
-  }, [markerId]);
+  }, [missionId]);
 
-  if (!marker) {
+  if (!mission) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            마커를 찾을 수 없습니다
+            미션을 찾을 수 없습니다
           </h1>
           <p className="text-gray-600 mb-4">
-            요청하신 마커 정보가 존재하지 않습니다.
+            요청하신 미션 정보가 존재하지 않습니다.
           </p>
           <Button onClick={() => router.push("/")} variant="outline">
             홈으로 돌아가기
@@ -70,87 +97,300 @@ export default function MissionPage() {
         {/* 이미지 섹션 */}
         <div className="relative">
           <MarkerImage
-            src={marker.imageUrl}
-            alt={marker.title}
+            src={mission.imageUrl}
+            alt={mission.title}
             width="w-full"
             height="h-64"
             shape="rounded"
           />
           <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1 text-sm font-medium text-gray-700">
-            미션 #{marker.id}
+            미션 #{mission.id}
           </div>
         </div>
 
         {/* 정보 섹션 */}
         <div className="p-6">
           <div className="mb-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              {marker.title}
-            </h2>
-            <p className="text-gray-600 leading-relaxed">
-              {marker.description}
-            </p>
+            <div className="flex items-center gap-2 mb-2">
+              <TypeBadge
+                type={
+                  (
+                    mission as unknown as {
+                      missionType?: string;
+                      quizType?: string;
+                    }
+                  ).missionType ||
+                  (mission as unknown as { quizType?: string }).quizType ||
+                  ""
+                }
+              />
+              <h2 className="text-2xl font-bold text-gray-900">
+                {mission.title}
+              </h2>
+            </div>
+            {mission.description && (
+              <p className="text-gray-600 leading-relaxed">
+                {mission.description}
+              </p>
+            )}
+            {typeof mission.pointsReward !== "undefined" && (
+              <div className="mt-2 text-sm text-neutral-600">
+                포인트: {mission.pointsReward}
+              </div>
+            )}
+            {mission.question && (
+              <div className="mt-3 p-3 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-neutral-800">
+                질문: {mission.question}
+              </div>
+            )}
           </div>
 
-          {/* 위치 정보: 위경도 텍스트 제거 */}
-          <div className="flex items-center mb-4 p-4 bg-gray-50 rounded-xl">
-            <MapPin className="w-5 h-5 text-primary mr-3 flex-shrink-0" />
-            <div>
-              <div className="font-medium text-gray-900">위치</div>
-              <div className="text-sm text-gray-600">지도에서 확인하세요</div>
-            </div>
-          </div>
+          {/* 타입별 인터랙션 */}
+          <div className="space-y-6">
+            {(() => {
+              const type =
+                (
+                  mission as unknown as {
+                    missionType?: string;
+                    quizType?: string;
+                  }
+                ).missionType ||
+                (mission as unknown as { quizType?: string }).quizType ||
+                "";
+              switch (type) {
+                case "QUIZ_TEXT_INPUT":
+                  return (
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium">정답 입력</div>
+                      <input
+                        value={textAnswer}
+                        onChange={(e) => setTextAnswer(e.target.value)}
+                        placeholder="정답을 입력하세요"
+                        className="w-full h-11 px-3 border rounded-md"
+                      />
+                      <Button
+                        disabled={submitting}
+                        onClick={async () => {
+                          setSubmitting(true);
+                          setResultMsg("");
+                          try {
+                            const res = await submitQuizText(
+                              missionId,
+                              textAnswer
+                            );
+                            setResultMsg(
+                              res.isCorrect ? "정답입니다!" : "오답입니다."
+                            );
+                          } catch {
+                            setResultMsg("제출 실패");
+                          } finally {
+                            setSubmitting(false);
+                          }
+                        }}
+                      >
+                        제출
+                      </Button>
+                    </div>
+                  );
+                case "QUIZ_MULTIPLE_CHOICE":
+                  return (
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium">
+                        선택지를 고르세요
+                      </div>
+                      <div className="space-y-2">
+                        {(mission.choices || []).map((c, idx) => (
+                          <label
+                            key={idx}
+                            className="flex items-center gap-2 text-sm"
+                          >
+                            <input
+                              type="radio"
+                              name="choice"
+                              checked={choiceIndex === idx}
+                              onChange={() => setChoiceIndex(idx)}
+                            />
+                            <span>
+                              {idx + 1}. {c}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                      <Button
+                        disabled={submitting}
+                        onClick={async () => {
+                          setSubmitting(true);
+                          setResultMsg("");
+                          try {
+                            const res = await submitQuizChoice(
+                              missionId,
+                              choiceIndex
+                            );
+                            setResultMsg(
+                              res.isCorrect ? "정답입니다!" : "오답입니다."
+                            );
+                          } catch {
+                            setResultMsg("제출 실패");
+                          } finally {
+                            setSubmitting(false);
+                          }
+                        }}
+                      >
+                        제출
+                      </Button>
+                    </div>
+                  );
+                case "QUIZ_IMAGE_UPLOAD":
+                case "PHOTO_UPLOAD":
+                  return (
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium">이미지 URL</div>
+                      <input
+                        value={imageUrl}
+                        onChange={(e) => setImageUrl(e.target.value)}
+                        placeholder="업로드된 이미지 URL"
+                        className="w-full h-11 px-3 border rounded-md"
+                      />
+                      <div className="text-xs text-neutral-600">
+                        또는 파일 선택 후 자동 업로드
+                      </div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setUploading(true);
+                          setResultMsg("");
+                          try {
+                            const fileName = `${Date.now()}_${file.name}`;
+                            const { getMissionImageUploadUrl } = await import(
+                              "../../../services/missionService"
+                            );
+                            const { uploadUrl } =
+                              await getMissionImageUploadUrl(
+                                missionId,
+                                fileName
+                              );
+                            await fetch(uploadUrl, {
+                              method: "PUT",
+                              body: file,
+                              headers: { "Content-Type": file.type },
+                            });
+                            // 업로드 URL에서 퍼블릭 접근 URL 유추
+                            const publicUrl = uploadUrl.split("?")[0];
+                            setImageUrl(publicUrl);
+                            setResultMsg("업로드 완료. 제출을 눌러주세요.");
+                          } catch {
+                            setResultMsg("업로드 실패");
+                          } finally {
+                            setUploading(false);
+                          }
+                        }}
+                      />
+                      <Button
+                        disabled={submitting || uploading}
+                        onClick={async () => {
+                          setSubmitting(true);
+                          setResultMsg("");
+                          try {
+                            const res = await submitQuizImage(
+                              missionId,
+                              imageUrl
+                            );
+                            setResultMsg(
+                              res.isCorrect ? "정답입니다!" : "오답입니다."
+                            );
+                          } catch {
+                            setResultMsg("제출 실패");
+                          } finally {
+                            setSubmitting(false);
+                          }
+                        }}
+                      >
+                        제출
+                      </Button>
+                    </div>
+                  );
+                case "PLACE_VISIT":
+                  return (
+                    <div className="space-y-2">
+                      <div className="text-sm text-neutral-700">
+                        해당 장소를 방문하면 완료 처리됩니다.
+                      </div>
+                      <Button
+                        disabled={submitting}
+                        onClick={async () => {
+                          setSubmitting(true);
+                          setResultMsg("");
+                          try {
+                            const res = await submitQuizNoInput(missionId);
+                            setResultMsg(
+                              res.isCorrect
+                                ? "완료 처리되었습니다."
+                                : "처리되었습니다."
+                            );
+                          } catch {
+                            setResultMsg("제출 실패");
+                          } finally {
+                            setSubmitting(false);
+                          }
+                        }}
+                      >
+                        완료 처리하기
+                      </Button>
+                    </div>
+                  );
+                case "SURVEY":
+                  return (
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium">설문 응답</div>
+                      <input
+                        value={textAnswer}
+                        onChange={(e) => setTextAnswer(e.target.value)}
+                        placeholder="응답을 입력하세요"
+                        className="w-full h-11 px-3 border rounded-md"
+                      />
+                      <Button
+                        disabled={submitting}
+                        onClick={async () => {
+                          setSubmitting(true);
+                          setResultMsg("");
+                          try {
+                            const res = await submitQuizText(
+                              missionId,
+                              textAnswer
+                            );
+                            setResultMsg(
+                              res.isCorrect
+                                ? "접수되었습니다."
+                                : "접수되었습니다."
+                            );
+                          } catch {
+                            setResultMsg("제출 실패");
+                          } finally {
+                            setSubmitting(false);
+                          }
+                        }}
+                      >
+                        제출
+                      </Button>
+                    </div>
+                  );
+                default:
+                  return (
+                    <div className="text-sm text-neutral-600">
+                      지원되지 않는 미션 타입입니다.
+                    </div>
+                  );
+              }
+            })()}
 
-          {/* 미션 정보 */}
-          <div className="space-y-4 mb-6">
-            <div className="flex items-center p-4 bg-blue-50 rounded-xl">
-              <Trophy className="w-5 h-5 text-blue-600 mr-3 flex-shrink-0" />
-              <div>
-                <div className="font-medium text-blue-900">미션 목표</div>
-                <div className="text-sm text-blue-700">
-                  이 장소에서 사진을 찍고 인증하세요
-                </div>
+            {resultMsg && (
+              <div className="text-center text-sm text-neutral-700">
+                {resultMsg}
               </div>
-            </div>
-
-            <div className="flex items-center p-4 bg-green-50 rounded-xl">
-              <Star className="w-5 h-5 text-green-600 mr-3 flex-shrink-0" />
-              <div>
-                <div className="font-medium text-green-900">보상</div>
-                <div className="text-sm text-green-700">
-                  스탬프 1개 + 경험치 100점
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center p-4 bg-orange-50 rounded-xl">
-              <Calendar className="w-5 h-5 text-orange-600 mr-3 flex-shrink-0" />
-              <div>
-                <div className="font-medium text-orange-900">완료일</div>
-                <div className="text-sm text-orange-700">2023.11.01</div>
-              </div>
-            </div>
-          </div>
-
-          {/* 액션 버튼들 */}
-          <div className="space-y-3">
-            <Button
-              className="w-full h-12 text-base font-medium"
-              onClick={() => {
-                // 지도 페이지로 이동하면서 해당 마커로 포커스
-                router.push(`/?focus=${marker.id}`);
-              }}
-            >
-              지도에서 보기
-            </Button>
-
-            <Button
-              variant="outline"
-              className="w-full h-12 text-base font-medium"
-              onClick={() => router.push(`/quiz/${marker.id}`)}
-            >
-              미션 완료하기
-            </Button>
+            )}
           </div>
         </div>
       </div>

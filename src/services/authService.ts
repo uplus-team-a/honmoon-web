@@ -49,6 +49,15 @@ export interface EmailSignupRequest {
   name: string;
 }
 
+export interface EmailPasswordLoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface SetPasswordRequest {
+  password: string;
+}
+
 export interface EmailLoginByUserRequest {
   userId: string;
 }
@@ -172,6 +181,32 @@ export async function exchangeEmailToken(params: {
     { method: "POST", withAuth: false, body: JSON.stringify(params) }
   );
   return res.data;
+}
+
+/**
+ * 이메일/비밀번호 로그인
+ * - POST /api/auth/login/email/password
+ */
+export async function loginWithEmailPassword(
+  body: EmailPasswordLoginRequest
+): Promise<AuthLoginResponse> {
+  const res = await apiFetch<{ data: AuthLoginResponse }>(
+    "/api/auth/login/email/password",
+    { method: "POST", withAuth: false, body: JSON.stringify(body) }
+  );
+  return res.data;
+}
+
+/**
+ * (세션 사용자) 비밀번호 설정/변경
+ * - POST /api/auth/password/set
+ */
+export async function setPassword(body: SetPasswordRequest): Promise<boolean> {
+  const res = await apiFetch<{ data: { success: boolean } }>(
+    "/api/auth/password/set",
+    { method: "POST", body: JSON.stringify(body) }
+  );
+  return !!res?.data?.success;
 }
 
 /**
