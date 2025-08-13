@@ -35,7 +35,7 @@ export interface MissionDetail {
     choices: string[];
   };
   correctAnswer?: string;
-  imageUrl?: string;
+  correctImageUrl?: string;
   pointsReward?: number;
 }
 

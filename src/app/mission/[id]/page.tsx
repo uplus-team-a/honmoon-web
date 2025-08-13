@@ -97,7 +97,7 @@ export default function MissionPage() {
         {/* 이미지 섹션 */}
         <div className="relative">
           <MarkerImage
-            src={mission.imageUrl}
+            src={mission.correctImageUrl}
             alt={mission.title}
             width="w-full"
             height="h-64"
