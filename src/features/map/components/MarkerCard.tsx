@@ -116,29 +116,35 @@ const InnerMarkerCard: React.FC<MarkerCardProps> = ({
           {/* 지도 마커에 위경도 노출, 카드에선 비표시 */}
         </div>
         <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
-          {/* 미션 목록(간략) */}
+          {/* 미션 안내 영역 */}
           <div className="text-[12px] text-neutral-700">
             {source === "kakao" ? (
-              <span>아직 미션이 등록되지 않았어요.</span>
+              <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full border border-neutral-200 bg-neutral-50 text-neutral-700">
+                <span className="inline-block w-2 h-2 rounded-full bg-neutral-400" />
+                미션 준비 중
+              </div>
             ) : missions && missions.length > 0 ? (
-              <div className="flex items-center gap-1.5 max-w-full overflow-hidden">
-                <span className="mr-1 text-[11px] px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-800 border border-neutral-200">
-                  미션
+              <div className="flex items-center gap-2 max-w-full overflow-hidden">
+                <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border border-neutral-200 bg-white text-neutral-900 shadow-sm">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-neutral-900" />
+                  미션 {missions.length}개
                 </span>
-                {missions.slice(0, 6).map((m) => (
-                  <span
-                    key={m.id}
-                    title={m.title}
-                    className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-neutral-50 text-neutral-800 border border-neutral-200 shadow-sm"
-                  >
-                    {renderMissionIcon(m.missionType)}
-                  </span>
-                ))}
-                {missions.length > 6 && (
-                  <span className="ml-1 text-[12px] px-1.5 py-0.5 rounded-full bg-neutral-50 text-neutral-600 border border-neutral-200">
-                    +{missions.length - 6}
-                  </span>
-                )}
+                <div className="flex items-center gap-1.5">
+                  {missions.slice(0, 6).map((m) => (
+                    <span
+                      key={m.id}
+                      title={m.title}
+                      className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-neutral-50 text-neutral-800 border border-neutral-200 shadow-sm"
+                    >
+                      {renderMissionIcon(m.missionType)}
+                    </span>
+                  ))}
+                  {missions.length > 6 && (
+                    <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-neutral-50 text-neutral-600 border border-neutral-200">
+                      +{missions.length - 6}
+                    </span>
+                  )}
+                </div>
               </div>
             ) : null}
           </div>
@@ -146,14 +152,14 @@ const InnerMarkerCard: React.FC<MarkerCardProps> = ({
           {source === "api" ? (
             <Button
               size="sm"
-              variant="ghost"
-              className="h-9 px-2.5 text-sm hover:bg-primary/10"
+              variant="outline"
+              className="h-9 px-3 text-sm border-neutral-300 hover:bg-white hover:-translate-y-0.5 hover:shadow-md transition-all rounded-lg ring-1 ring-transparent hover:ring-neutral-200"
               onClick={(e) => {
                 e.stopPropagation();
                 window.location.href = `/mission/place/${marker.id}`;
               }}
             >
-              <ArrowRight className="w-3.5 h-3.5 mr-1" />
+              <ArrowRight className="w-5 h-5 mr-1" />
               상세보기
             </Button>
           ) : null}

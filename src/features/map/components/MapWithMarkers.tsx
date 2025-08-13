@@ -418,7 +418,7 @@ const MapWithMarkers: React.FC<MapWithMarkersProps> = ({ focusMarkerId }) => {
         </div>
         <div
           ref={mapContainerRef}
-          className="w-full h-[550px] rounded-3xl shadow-[0_6px_24px_rgba(0,0,0,0.06)] bg-white overflow-hidden ring-1 ring-black/5"
+          className="w-full h-[50vh] md:h-[550px] rounded-3xl shadow-[0_6px_24px_rgba(0,0,0,0.06)] bg-white overflow-hidden ring-1 ring-black/5"
         />
 
         {/* 검색창 (지도 하단 중앙 오버레이) */}
@@ -429,6 +429,183 @@ const MapWithMarkers: React.FC<MapWithMarkersProps> = ({ focusMarkerId }) => {
               onChange={(e) => setQuery(e.target.value)}
               placeholder="장소 검색 (예: 한강)"
               className="flex-1 h-10 rounded-xl border border-neutral-200 px-3 text-[14px] bg-white text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-300 transition-colors"
+              onKeyDown={async (e) => {
+                if (e.key !== "Enter") return;
+                e.preventDefault();
+                const trigger = async () => {
+                  if (!query.trim()) return;
+                  if (
+                    !mapInstanceRef.current ||
+                    !window.kakao?.maps?.services
+                  ) {
+                    try {
+                      setIsSearching(true);
+                      const results = await searchMissionPlaces(query.trim());
+                      const apiMapped: Marker[] = await Promise.all(
+                        results.map(async (placeLike) => {
+                          const ap: MissionPlaceLike =
+                            placeLike as unknown as MissionPlaceLike;
+                          const title: string = ap.title ?? ap.name ?? "";
+                          const lat: number = (ap.lat ?? ap.latitude)!;
+                          const lng: number = (ap.lng ?? ap.longitude)!;
+                          const image: string =
+                            ap.imageUrl ?? ap.image ?? DEFAULT_PLACE_IMAGE;
+                          const description: string =
+                            ap.description ?? ap.location ?? "";
+                          try {
+                            const missions = await fetchMissionsByPlaceId(
+                              placeLike.id
+                            );
+                            return {
+                              id: placeLike.id,
+                              title,
+                              lat,
+                              lng,
+                              image,
+                              description,
+                              missionsCount: missions.length,
+                              primaryMissionId: missions?.[0]?.id,
+                              markerStyle: { type: "primary" as const },
+                              source: "api" as const,
+                            } as Marker;
+                          } catch {
+                            return {
+                              id: placeLike.id,
+                              title,
+                              lat,
+                              lng,
+                              image,
+                              description,
+                              missionsCount: 0,
+                              primaryMissionId: undefined,
+                              markerStyle: { type: "primary" as const },
+                              source: "api" as const,
+                            } as Marker;
+                          }
+                        })
+                      );
+                      const limited = apiMapped.slice(0, 8);
+                      setRemoteMarkers(limited);
+                      setVisibleMarkers(limited.map((_, idx) => idx));
+                      if (mapInstanceRef.current && limited[0]) {
+                        const center = new window.kakao.maps.LatLng(
+                          limited[0].lat,
+                          limited[0].lng
+                        );
+                        mapInstanceRef.current.setCenter(center);
+                        mapInstanceRef.current.setLevel(4);
+                      }
+                    } finally {
+                      setIsSearching(false);
+                    }
+                    return;
+                  }
+                  try {
+                    setIsSearching(true);
+                    const places = new window.kakao.maps.services.Places();
+                    const keyword = query.trim();
+                    const apiResults = await searchMissionPlaces(keyword);
+                    const apiMapped: Marker[] = await Promise.all(
+                      apiResults.map(async (placeLike) => {
+                        const ap: MissionPlaceLike =
+                          placeLike as unknown as MissionPlaceLike;
+                        const title: string = ap.title ?? ap.name ?? "";
+                        const lat: number = (ap.lat ?? ap.latitude)!;
+                        const lng: number = (ap.lng ?? ap.longitude)!;
+                        const image: string =
+                          ap.imageUrl ?? ap.image ?? DEFAULT_PLACE_IMAGE;
+                        const description: string =
+                          ap.description ?? ap.location ?? "";
+                        try {
+                          const missions = await fetchMissionsByPlaceId(
+                            placeLike.id
+                          );
+                          return {
+                            id: placeLike.id,
+                            title,
+                            lat,
+                            lng,
+                            image,
+                            description,
+                            missionsCount: missions.length,
+                            primaryMissionId: missions?.[0]?.id,
+                            markerStyle: { type: "primary" as const },
+                            source: "api" as const,
+                          } as Marker;
+                        } catch {
+                          return {
+                            id: placeLike.id,
+                            title,
+                            lat,
+                            lng,
+                            image,
+                            description,
+                            missionsCount: 0,
+                            primaryMissionId: undefined,
+                            markerStyle: { type: "primary" as const },
+                            source: "api" as const,
+                          } as Marker;
+                        }
+                      })
+                    );
+                    let merged: Marker[] = [...apiMapped];
+                    if (merged.length < 8) {
+                      const kakaoMapped: Marker[] = await new Promise(
+                        (resolve: (value: Marker[]) => void) => {
+                          places.keywordSearch(
+                            keyword,
+                            async (data, status) => {
+                              if (status !== "OK" || !data?.length) {
+                                resolve([] as Marker[]);
+                                return;
+                              }
+                              const top = data.slice(0, 8 - merged.length);
+                              const k: Marker[] = await Promise.all(
+                                top.map(async (p) => {
+                                  const lat = parseFloat(p.y);
+                                  const lng = parseFloat(p.x);
+                                  const title = p.place_name;
+                                  const description =
+                                    p.road_address_name || p.address_name || "";
+                                  return {
+                                    id: Number(p.id) || Math.random(),
+                                    title,
+                                    lat,
+                                    lng,
+                                    image: DEFAULT_PLACE_IMAGE,
+                                    description,
+                                    missionsCount: 0,
+                                    primaryMissionId: undefined,
+                                    markerStyle: { type: "primary" as const },
+                                    source: "kakao" as const,
+                                  } as Marker;
+                                })
+                              );
+                              resolve(k as Marker[]);
+                            }
+                          );
+                        }
+                      );
+                      merged = [...merged, ...kakaoMapped].slice(0, 8);
+                    } else {
+                      merged = merged.slice(0, 8);
+                    }
+                    setRemoteMarkers(merged);
+                    setVisibleMarkers(merged.map((_, idx) => idx));
+                    if (mapInstanceRef.current && merged[0]) {
+                      const center = new window.kakao.maps.LatLng(
+                        merged[0].lat,
+                        merged[0].lng
+                      );
+                      mapInstanceRef.current.setCenter(center);
+                      mapInstanceRef.current.setLevel(4);
+                    }
+                  } finally {
+                    setIsSearching(false);
+                  }
+                };
+                trigger();
+              }}
             />
             <button
               className="h-10 rounded-xl px-4 bg-neutral-900 text-white text-[14px] hover:bg-black disabled:opacity-60 transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-[1px]"
@@ -640,7 +817,16 @@ const MapWithMarkers: React.FC<MapWithMarkersProps> = ({ focusMarkerId }) => {
       {!error && (
         <MarkerList
           markers={remoteMarkers.slice(0, 8)}
-          onMarkerClick={handleMarkerFocus}
+          onMarkerClick={(index) => {
+            handleMarkerFocus(index);
+            // 지도 영역으로 스크롤 포커스 이동
+            try {
+              const el = mapContainerRef.current;
+              if (el) {
+                el.scrollIntoView({ behavior: "smooth", block: "center" });
+              }
+            } catch {}
+          }}
           activeMarkerIndex={activeMarkerIndex}
           visibleMarkers={visibleMarkers.filter((i) => i < 8)}
           onToggleVisibility={toggleMarkerVisibility}

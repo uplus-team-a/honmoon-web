@@ -7,6 +7,7 @@ import { useEffect } from "react";
 import { useAuthStore } from "../../../store/auth";
 import { Button } from "../../../shared/components/ui/button";
 import { startGoogleLogin } from "../../../services/authService";
+import { Home } from "lucide-react";
 
 const Header = () => {
   const pathname = usePathname();
@@ -41,6 +42,14 @@ const Header = () => {
   return (
     <header className="relative z-30 w-full border-b border-neutral-200/60 bg-white/80 backdrop-blur-sm px-4 py-2.5 flex flex-col sm:flex-row justify-between items-center">
       <div className="flex items-center gap-4 flex-1">
+        <Link
+          href="/"
+          aria-label="홈으로 이동"
+          className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-neutral-200 bg-white text-neutral-800 hover:bg-neutral-50 shadow-sm"
+        >
+          <Home className="w-5 h-5" />
+        </Link>
+        <div className="h-6 w-px bg-neutral-200" />
         <>
           {isMyProfilePage ? (
             <Link href="/" className="inline-flex items-center">
@@ -114,7 +123,7 @@ const Header = () => {
                   type="button"
                   variant="outline"
                   onClick={() => startGoogleLogin("/my-profile")}
-                  className="rounded-lg h-9 px-3 text-[13px] font-medium border border-neutral-200 bg-white text-neutral-900 hover:bg-neutral-50 active:translate-y-[1px] transition-colors"
+                  className="rounded-lg h-9 px-3 text-[13px] font-medium border border-neutral-200 bg-white text-neutral-900 hover:bg-neutral-50 active:translate-y-[1px] transition-colors inline-flex items-center"
                 >
                   <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" aria-hidden>
                     <path
@@ -134,13 +143,27 @@ const Header = () => {
                       d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                     />
                   </svg>
-                  Google로 계속하기
+                  <span className="hidden sm:inline">Google Login</span>
                 </Button>
                 <Link
                   href="/login"
-                  className="rounded-lg h-9 px-3 text-[13px] font-medium border border-neutral-200 bg-white text-neutral-900 hover:bg-neutral-50 active:translate-y-[1px] transition-colors inline-flex items-center"
+                  className="rounded-lg h-9 px-3 text-[13px] font-medium border border-neutral-200 bg-white text-neutral-900 hover:bg-neutral-50 active:translate-y-[1px] transition-colors inline-flex items-center gap-2"
                 >
-                  이메일 로그인
+                  <svg
+                    className="w-4 h-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden
+                  >
+                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                    <polyline points="10 17 15 12 10 7" />
+                    <line x1="15" y1="12" x2="3" y2="12" />
+                  </svg>
+                  <span className="hidden sm:inline">로그인</span>
                 </Link>
               </div>
             ) : (

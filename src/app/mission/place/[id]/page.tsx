@@ -182,7 +182,6 @@ export default function MissionPlaceDetailPage() {
                 <th className="text-left font-medium px-4 py-2">제목</th>
                 <th className="text-left font-medium px-4 py-2 w-24">선택지</th>
                 <th className="text-left font-medium px-4 py-2 w-20">포인트</th>
-                <th className="text-right font-medium px-4 py-2 w-24">액션</th>
               </tr>
             </thead>
             <tbody>
@@ -235,16 +234,6 @@ export default function MissionPlaceDetailPage() {
                       {typeof m.pointsReward !== "undefined"
                         ? m.pointsReward
                         : "-"}
-                    </td>
-                    <td className="px-4 py-2 align-middle text-right">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-[12px]"
-                        onClick={() => router.push(`/mission/${m.id}`)}
-                      >
-                        상세
-                      </Button>
                     </td>
                   </tr>
                 );
