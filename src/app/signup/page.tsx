@@ -1,12 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useAuthStore, type AuthState } from "store/auth";
-import {
-  loginWithEmailPassword,
-  setPassword,
-  requestEmailSignup,
-} from "../../services/authService";
+import { useAuthStore as useAuthStoreBase, type AuthState } from "store/auth";
+import { requestEmailSignup } from "../../services/authService";
+import { useRouter } from "next/navigation";
+import { useAuthStore } from "store/auth";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
@@ -14,9 +12,16 @@ export default function SignupPage() {
   const [password, setPwd] = useState("");
   const [mode, setMode] = useState<"magic" | "password">("magic");
   const [sent, setSent] = useState(false);
-  const loginWithEmail = useAuthStore((s: AuthState) => s.loginWithEmail);
+  const loginWithEmail = useAuthStoreBase((s: AuthState) => s.loginWithEmail);
+  const loginWithEmailPasswordSupabase = useAuthStore(
+    (s) => (s as unknown as { loginWithEmailPasswordSupabase: (email: string, password: string) => Promise<void> }).loginWithEmailPasswordSupabase
+  );
+  const signupWithEmailPasswordSupabase = useAuthStore(
+    (s) => (s as unknown as { signupWithEmailPasswordSupabase: (email: string, password: string, name?: string) => Promise<void> }).signupWithEmailPasswordSupabase
+  );
   const loading = useAuthStore((s: AuthState) => s.loading);
   const error = useAuthStore((s: AuthState) => s.error);
+  const router = useRouter();
 
   const onSubmitMagic = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,12 +35,8 @@ export default function SignupPage() {
 
   const onSubmitPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await loginWithEmailPassword({ email, password });
-    if (res.appSessionToken) {
-      // 로그인 성공 시 비밀번호 설정/변경 UI는 별도 페이지로 이동 가능
-      window.localStorage.setItem("appSessionToken", res.appSessionToken);
-      window.location.href = "/my-profile";
-    }
+    await loginWithEmailPasswordSupabase(email, password);
+    router.replace("/my-profile");
   };
 
   return (
@@ -107,6 +108,24 @@ export default function SignupPage() {
             : "이메일/비밀번호로 로그인"}
         </button>
       </form>
+      {mode === "password" && (
+        <div className="mt-4 text-sm text-neutral-600">
+          계정이 없나요?{" "}
+          <button
+            className="underline"
+            onClick={async () => {
+              await signupWithEmailPasswordSupabase(
+                email,
+                password,
+                name || email.split("@")[0]
+              );
+              router.replace("/my-profile");
+            }}
+          >
+            이메일/비밀번호로 회원가입
+          </button>
+        </div>
+      )}
       {sent && (
         <div className="mt-4 text-green-600 text-sm">
           입력하신 주소로 로그인 링크를 보냈습니다. 메일함을 확인해주세요.

@@ -173,13 +173,68 @@ const MapWithMarkers: React.FC<MapWithMarkersProps> = ({ focusMarkerId }) => {
     [setMarkerVisibility]
   );
 
+  // AI placeholder
+  const [aiPlaceholder, setAiPlaceholder] =
+    useState<string>("장소 검색 (예: 한강)");
+  useEffect(() => {
+    let cancelled = false;
+    const timeout = setTimeout(() => {
+      if (!cancelled)
+        setAiPlaceholder("오늘 어디로 가볼까요? 서울 한 바퀴 어때요?");
+    }, 3000);
+    (async () => {
+      try {
+        const now = new Date();
+        const dateStr = now.toLocaleDateString("ko-KR", { dateStyle: "long" });
+        const suggestions = [
+          `${dateStr} 산책 어때요? 한강부터 가볼까요?`,
+          `광화문 힙겹? 덕수궁 돌담길로 한 번 가봅시다!`,
+          `따뜻한 커피 들고 북촌 한옥마을 산책해요!`,
+          `오늘 사진 맛집: 남산타워 야경 어떠세요?`,
+          `홍대 버스킹, 텐션 올리고 가볼까요?`,
+        ];
+        const pick =
+          suggestions[Math.floor(Math.random() * suggestions.length)];
+        if (!cancelled) setAiPlaceholder(pick.slice(0, 50));
+      } catch {
+        if (!cancelled)
+          setAiPlaceholder("오늘 어디로 가볼까요? 서울 한 바퀴 어때요?");
+      } finally {
+        clearTimeout(timeout);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
+  }, []);
+
+  // typing animation for placeholder
+  const [renderPlaceholder, setRenderPlaceholder] =
+    useState<string>(aiPlaceholder);
+  useEffect(() => {
+    let i = 0;
+    let cancelled = false;
+    setRenderPlaceholder("");
+    const timer = setInterval(() => {
+      if (cancelled) return;
+      i += 1;
+      setRenderPlaceholder(aiPlaceholder.slice(0, i));
+      if (i >= aiPlaceholder.length) clearInterval(timer);
+    }, 24);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [aiPlaceholder]);
+
   return (
     <div className="relative z-10 flex flex-col gap-8 p-6 max-w-[1600px] mx-auto">
       <div className="hidden">
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="장소 검색 (예: 한강)"
+          placeholder={renderPlaceholder || "장소 검색 (예: 한강)"}
           className="flex-1 h-10 rounded-xl border border-neutral-300 px-3 text-[14px] bg-white text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-400"
         />
         <button

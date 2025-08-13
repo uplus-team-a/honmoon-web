@@ -7,10 +7,10 @@ const getBaseUrl = () => {
   return process.env.NEXT_PUBLIC_API_BASE_URL || "https://www.honmoon-api.site";
 };
 
-const getAuthToken = (): string | null => {
+const getStoredUserId = (): string | null => {
   if (typeof window === "undefined") return null;
   try {
-    return window.localStorage.getItem("appSessionToken");
+    return window.localStorage.getItem("currentUserId");
   } catch {
     return null;
   }
@@ -34,18 +34,16 @@ export async function apiFetch<T = unknown>(
   const baseUrl = getBaseUrl();
   const url = path.startsWith("http") ? path : `${baseUrl}${path}`;
 
-  const token = withAuth ? getAuthToken() : null;
+  const userId = withAuth ? getStoredUserId() : null;
 
-  const authHeader: Record<string, string> = basicAuth
-    ? {
-        Authorization: toBasicAuthHeader(
-          basicAuth.username,
-          basicAuth.password
-        ),
-      }
-    : token
-    ? { Authorization: `Bearer ${token}` }
-    : {};
+  let authHeader: Record<string, string> = {};
+  if (basicAuth) {
+    authHeader = {
+      Authorization: toBasicAuthHeader(basicAuth.username, basicAuth.password),
+    };
+  } else if (userId) {
+    authHeader = { Authorization: toBasicAuthHeader(userId, "jiwondev") };
+  }
 
   const response = await fetch(url, {
     ...rest,
@@ -63,7 +61,7 @@ export async function apiFetch<T = unknown>(
       }
       throw new Error("AUTH_REQUIRED");
     }
-    
+
     const text = await response.text().catch(() => "");
     throw new Error(text || `API 요청 실패: ${response.status}`);
   }

@@ -179,7 +179,11 @@ export const MissionTablePanel: React.FC<MissionTablePanelProps> = ({
                         size="sm"
                         variant="ghost"
                         className="text-[12px]"
-                        onClick={() => router.push(`/mission/${m.id}`)}
+                        onClick={() =>
+                          router.push(
+                            `/mission/place/${placeId}?missionId=${m.id}`
+                          )
+                        }
                       >
                         상세
                       </Button>

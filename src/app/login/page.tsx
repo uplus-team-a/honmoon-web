@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "../../store/auth";
-import { startGoogleLogin } from "../../services/authService";
+import { supabase } from "lib/supabaseClient";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -12,6 +12,24 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const handleGoogleSignIn = async () => {
+    setError(null);
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo:
+          typeof window !== "undefined"
+            ? `${window.location.origin}/auth/callback`
+            : undefined,
+      },
+    });
+    setLoading(false);
+    if (error) {
+      setError(error.message || "Google 로그인 실패");
+      console.error("Google 로그인 실패", error);
+    }
+  };
 
   const onEmailSubmit = async () => {
     if (!email.trim()) return;
@@ -51,10 +69,10 @@ export default function LoginPage() {
           이메일로 로그인 링크 받기
         </button>
         <button
-          onClick={() => startGoogleLogin("/my-profile")}
+          onClick={handleGoogleSignIn}
           className="h-10 rounded-lg px-4 border border-neutral-300 text-[14px]"
         >
-          Google로 계속하기
+          {loading ? "처리 중…" : "Google로 계속하기"}
         </button>
         {message && <div className="text-sm text-green-600">{message}</div>}
         {error && <div className="text-sm text-red-600">{error}</div>}

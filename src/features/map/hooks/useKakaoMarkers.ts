@@ -97,7 +97,7 @@ export const useKakaoMarkers = (
                   markerId
                     ? `<div class="text-center">
                         <button 
-                          onclick="window.location.href='/mission/${markerId}'"
+                          onclick="window.location.href='/mission/place/${markerId}'"
                           style="
                             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                             color: white;

@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { useAuthStore } from "../../../store/auth";
 import { Button } from "../../../shared/components/ui/button";
-import { startGoogleLogin } from "../../../services/authService";
+import { supabase } from "lib/supabaseClient";
 
 const Header = () => {
   const pathname = usePathname();
@@ -113,7 +113,17 @@ const Header = () => {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => startGoogleLogin("/my-profile")}
+                  onClick={() =>
+                    supabase.auth.signInWithOAuth({
+                      provider: "google",
+                      options: {
+                        redirectTo:
+                          typeof window !== "undefined"
+                            ? `${window.location.origin}/auth/callback`
+                            : undefined,
+                      },
+                    })
+                  }
                   className="rounded-lg h-9 px-3 text-[13px] font-medium border border-neutral-200 bg-white text-neutral-900 hover:bg-neutral-50 active:translate-y-[1px] transition-colors"
                 >
                   <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" aria-hidden>

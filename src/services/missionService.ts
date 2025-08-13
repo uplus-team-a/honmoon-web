@@ -134,38 +134,42 @@ export async function submitQuizText(
   missionId: number,
   textAnswer: string
 ): Promise<SubmitQuizResult> {
-  const query = new URLSearchParams({ textAnswer });
-  const res = await apiFetch<ApiItemResponse<SubmitQuizResult>>(
-    `/api/user-activities/missions/${missionId}/submit-quiz?${query.toString()}`,
-    { method: "POST", ...authOptionsForRequest() }
-  );
-  return res.data;
+  const res = await fetch(`/api/missions/${missionId}/submit`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ textAnswer }),
+  });
+  if (!res.ok) throw new Error("submit failed");
+  const json = (await res.json()) as ApiItemResponse<SubmitQuizResult>;
+  return json.data;
 }
 
 export async function submitQuizChoice(
   missionId: number,
   selectedChoiceIndex: number
 ): Promise<SubmitQuizResult> {
-  const query = new URLSearchParams({
-    selectedChoiceIndex: String(selectedChoiceIndex),
+  const res = await fetch(`/api/missions/${missionId}/submit`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ selectedChoiceIndex }),
   });
-  const res = await apiFetch<ApiItemResponse<SubmitQuizResult>>(
-    `/api/user-activities/missions/${missionId}/submit-quiz?${query.toString()}`,
-    { method: "POST", ...authOptionsForRequest() }
-  );
-  return res.data;
+  if (!res.ok) throw new Error("submit failed");
+  const json = (await res.json()) as ApiItemResponse<SubmitQuizResult>;
+  return json.data;
 }
 
 export async function submitQuizImage(
   missionId: number,
   uploadedImageUrl: string
 ): Promise<SubmitQuizResult> {
-  const query = new URLSearchParams({ uploadedImageUrl });
-  const res = await apiFetch<ApiItemResponse<SubmitQuizResult>>(
-    `/api/user-activities/missions/${missionId}/submit-quiz?${query.toString()}`,
-    { method: "POST", ...authOptionsForRequest() }
-  );
-  return res.data;
+  const res = await fetch(`/api/missions/${missionId}/submit`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ uploadedImageUrl }),
+  });
+  if (!res.ok) throw new Error("submit failed");
+  const json = (await res.json()) as ApiItemResponse<SubmitQuizResult>;
+  return json.data;
 }
 
 /**
@@ -174,11 +178,12 @@ export async function submitQuizImage(
 export async function submitQuizNoInput(
   missionId: number
 ): Promise<SubmitQuizResult> {
-  const res = await apiFetch<ApiItemResponse<SubmitQuizResult>>(
-    `/api/user-activities/missions/${missionId}/submit-quiz`,
-    { method: "POST", ...authOptionsForRequest() }
-  );
-  return res.data;
+  const res = await fetch(`/api/missions/${missionId}/submit`, {
+    method: "POST",
+  });
+  if (!res.ok) throw new Error("submit failed");
+  const json = (await res.json()) as ApiItemResponse<SubmitQuizResult>;
+  return json.data;
 }
 
 export async function fetchMissionById(id: number): Promise<MissionDetail> {
