@@ -3,12 +3,12 @@
 import React from "react";
 import { useParams } from "next/navigation";
 //import DetailPages from "../../../features/mission/components/DetailPages";
-import QuizPageJaYangStation from "../../../features/mission/components/QuizPageJaYangStation";
+import QuizPageSeoulOlympicMainStadium from "../../../features/mission/components/QuizPageQuizPageSeoulOlympicMainStadium";
 
 export default function MissionPage() {
   const params = useParams();
   const markerId = Number(params.id);
 
-  return <QuizPageJaYangStation markerId={markerId} />;
+  return <QuizPageSeoulOlympicMainStadium markerId={markerId} />;
   // <DetailPages markerId={markerId} />;
 }
