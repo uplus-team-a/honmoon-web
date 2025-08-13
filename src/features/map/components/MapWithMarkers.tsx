@@ -173,39 +173,37 @@ const MapWithMarkers: React.FC<MapWithMarkersProps> = ({ focusMarkerId }) => {
     [setMarkerVisibility]
   );
 
-  // AI placeholder
-  const [aiPlaceholder, setAiPlaceholder] =
-    useState<string>("장소 검색 (예: 한강)");
+  // AI placeholder (OpenAI 기반, 최초에는 빈 문자열 유지 후 지연 호출)
+  const [aiPlaceholder, setAiPlaceholder] = useState<string>("");
   useEffect(() => {
     let cancelled = false;
-    const timeout = setTimeout(() => {
-      if (!cancelled)
-        setAiPlaceholder("오늘 어디로 가볼까요? 서울 한 바퀴 어때요?");
-    }, 3000);
-    (async () => {
-      try {
-        const now = new Date();
-        const dateStr = now.toLocaleDateString("ko-KR", { dateStyle: "long" });
-        const suggestions = [
-          `${dateStr} 산책 어때요? 한강부터 가볼까요?`,
-          `광화문 힙겹? 덕수궁 돌담길로 한 번 가봅시다!`,
-          `따뜻한 커피 들고 북촌 한옥마을 산책해요!`,
-          `오늘 사진 맛집: 남산타워 야경 어떠세요?`,
-          `홍대 버스킹, 텐션 올리고 가볼까요?`,
-        ];
-        const pick =
-          suggestions[Math.floor(Math.random() * suggestions.length)];
-        if (!cancelled) setAiPlaceholder(pick.slice(0, 50));
-      } catch {
-        if (!cancelled)
-          setAiPlaceholder("오늘 어디로 가볼까요? 서울 한 바퀴 어때요?");
-      } finally {
-        clearTimeout(timeout);
-      }
-    })();
+    const controller = new AbortController();
+    let abortTimer: ReturnType<typeof setTimeout> | undefined;
+    const startTimer = setTimeout(() => {
+      (async () => {
+        try {
+          abortTimer = setTimeout(() => controller.abort(), 1600);
+          const res = await fetch("/api/ai/placeholder", {
+            method: "GET",
+            cache: "no-store",
+            signal: controller.signal,
+          });
+          if (!res.ok) throw new Error("bad_response");
+          const data = (await res.json()) as { text?: string };
+          const text = (data?.text || "장소 (예시: 한강)").toString();
+          if (!cancelled) setAiPlaceholder(text);
+        } catch {
+          if (!cancelled) setAiPlaceholder("장소 (예시: 한강)");
+        } finally {
+          if (abortTimer) clearTimeout(abortTimer);
+        }
+      })();
+    }, 800);
     return () => {
       cancelled = true;
-      clearTimeout(timeout);
+      if (abortTimer) clearTimeout(abortTimer);
+      clearTimeout(startTimer);
+      controller.abort();
     };
   }, []);
 
@@ -234,7 +232,7 @@ const MapWithMarkers: React.FC<MapWithMarkersProps> = ({ focusMarkerId }) => {
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder={renderPlaceholder || "장소 검색 (예: 한강)"}
+          placeholder={renderPlaceholder}
           className="flex-1 h-10 rounded-xl border border-neutral-300 px-3 text-[14px] bg-white text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-400"
         />
         <button
@@ -482,7 +480,7 @@ const MapWithMarkers: React.FC<MapWithMarkersProps> = ({ focusMarkerId }) => {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="장소 검색 (예: 한강)"
+              placeholder={renderPlaceholder}
               className="flex-1 h-10 rounded-xl border border-neutral-200 px-3 text-[14px] bg-white text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-300 transition-colors"
             />
             <button

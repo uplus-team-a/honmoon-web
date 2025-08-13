@@ -11,6 +11,7 @@ import {
   signInWithEmailPassword,
   signUpWithEmailPassword,
   ensureUserDefaults,
+  storeCurrentUserIdFromSession,
 } from "../services/supabaseAuth";
 import {
   fetchMyMissionStats,
@@ -35,6 +36,15 @@ export interface AuthState {
     purpose?: "signup" | "login"
   ) => Promise<void>;
   signOut: () => Promise<void>;
+  loginWithEmailPasswordSupabase: (
+    email: string,
+    password: string
+  ) => Promise<boolean>;
+  signupWithEmailPasswordSupabase: (
+    email: string,
+    password: string,
+    name?: string
+  ) => Promise<boolean>;
 }
 
 const parseErrorMessage = (error: unknown): string => {
@@ -136,43 +146,44 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (typeof window !== "undefined") {
       try {
         window.localStorage.removeItem("appSessionToken");
+        window.localStorage.removeItem("currentUserId");
       } catch {}
     }
     set({ token: null, user: null, loading: false });
   },
   // 추가: 이메일/비밀번호 로그인/회원가입(Supabase)
-  async loginWithEmailPasswordSupabase(email: string, password: string) {
+  async loginWithEmailPasswordSupabase(
+    email: string,
+    password: string
+  ): Promise<boolean> {
     set({ loading: true, error: null });
     const ok = await signInWithEmailPassword({ email, password });
     if (!ok) {
       set({ loading: false, error: "이메일/비밀번호 로그인 실패" });
-      return;
+      return false;
     }
-    // 세션 토큰을 기존 구조와 호환되게 저장 (선택)
-    // 콜백 없이도 세션이 생기므로 프로필 로딩
+    await storeCurrentUserIdFromSession();
     await ensureUserDefaults({
       profile_image_url:
         "https://storage.googleapis.com/honmoon-bucket/image/honmmon.png",
     });
     await get().fetchProfile();
     set({ loading: false });
+    return true;
   },
   async signupWithEmailPasswordSupabase(
     email: string,
     password: string,
     name?: string
-  ) {
+  ): Promise<boolean> {
     set({ loading: true, error: null });
     const ok = await signUpWithEmailPassword({ email, password, name });
     if (!ok) {
       set({ loading: false, error: "회원가입 실패" });
-      return;
+      return false;
     }
-    await ensureUserDefaults({
-      profile_image_url:
-        "https://storage.googleapis.com/honmoon-bucket/image/honmmon.png",
-    });
-    await get().fetchProfile();
+    // 이메일 인증이 필요한 케이스: 세션이 즉시 생기지 않을 수 있어 바로 프로필 로딩하지 않음
     set({ loading: false });
+    return true;
   },
 }));

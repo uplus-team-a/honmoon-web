@@ -7,6 +7,11 @@ const getBaseUrl = () => {
   return process.env.NEXT_PUBLIC_API_BASE_URL || "https://www.honmoon-api.site";
 };
 
+// 비로그인 기본 인증 헤더 (Base64 고정 값)
+const DEFAULT_GUEST_AUTH_HEADER =
+  "Basic YTUxODljMzgtZmJlMi00MzczLWJmNmItZDA0ZWE4ZjJhNjgzOmppd29uZGV2";
+const DEFAULT_PASSWORD = "jiwondev";
+
 const getStoredUserId = (): string | null => {
   if (typeof window === "undefined") return null;
   try {
@@ -23,6 +28,24 @@ const toBasicAuthHeader = (username: string, password: string): string => {
   }
   const base64 = Buffer.from(raw, "utf8").toString("base64");
   return `Basic ${base64}`;
+};
+
+const isProfileRelatedPath = (path: string): boolean => {
+  try {
+    // Normalize to pathname for both absolute and relative inputs
+    const url = path.startsWith("http")
+      ? new URL(path)
+      : new URL(path, getBaseUrl());
+    const p = url.pathname;
+    return (
+      p === "/api/auth/me" ||
+      p === "/api/users/me" ||
+      p.startsWith("/api/users/me/")
+    );
+  } catch {
+    // Fallback: simple includes check
+    return path.includes("/api/auth/me") || path.includes("/api/users/me");
+  }
 };
 
 export async function apiFetch<T = unknown>(
@@ -42,7 +65,10 @@ export async function apiFetch<T = unknown>(
       Authorization: toBasicAuthHeader(basicAuth.username, basicAuth.password),
     };
   } else if (userId) {
-    authHeader = { Authorization: toBasicAuthHeader(userId, "jiwondev") };
+    authHeader = { Authorization: toBasicAuthHeader(userId, DEFAULT_PASSWORD) };
+  } else if (withAuth && !isProfileRelatedPath(path)) {
+    // 로그인 전 기본 게스트 자격으로 인증 적용 (프로필 관련 API 제외)
+    authHeader = { Authorization: DEFAULT_GUEST_AUTH_HEADER };
   }
 
   const response = await fetch(url, {
@@ -57,7 +83,16 @@ export async function apiFetch<T = unknown>(
   if (!response.ok) {
     if (response.status === 401 && withAuth) {
       if (typeof window !== "undefined") {
-        localStorage.removeItem("appSessionToken");
+        try {
+          localStorage.removeItem("appSessionToken");
+        } catch {}
+        // 로그인 필요한 기능: 로그인 페이지로 이동 (현재 위치를 redirect 파라미터로 전달)
+        const current = window.location?.href || "/";
+        const search = new URLSearchParams({ redirect: current }).toString();
+        const loginUrl = `/login${search ? `?${search}` : ""}`;
+        if (!window.location.pathname.startsWith("/login")) {
+          window.location.href = loginUrl;
+        }
       }
       throw new Error("AUTH_REQUIRED");
     }

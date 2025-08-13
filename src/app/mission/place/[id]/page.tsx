@@ -329,17 +329,14 @@ export default function MissionPlaceDetailPage() {
   };
 
   const onTabClick = (idx: number, ev: React.MouseEvent<HTMLButtonElement>) => {
-    const mid = (missions[idx] as { id: number } | undefined)?.id;
-    if (typeof mid === "number" && !completedMissionIds.has(mid)) {
-      setActiveIndex(idx);
-      const btn = ev.currentTarget as HTMLElement;
-      animate(
-        btn as unknown as any,
-        { scale: [1, 1.06, 1] } as any,
-        { duration: 0.22, easing: "ease-out" } as any
-      );
-      popBurstOn(btn);
-    }
+    setActiveIndex(idx);
+    const btn = ev.currentTarget as HTMLElement;
+    animate(
+      btn as unknown as any,
+      { scale: [1, 1.06, 1] } as any,
+      { duration: 0.22, easing: "ease-out" } as any
+    );
+    popBurstOn(btn);
   };
 
   const completedCount = useMemo(() => {
@@ -417,7 +414,7 @@ export default function MissionPlaceDetailPage() {
         </div>
         <div ref={tabsRef} className="px-3 pt-3 flex gap-2 overflow-x-auto">
           {missions.map((m, idx) => {
-            const disabled = completedMissionIds.has(
+            const isCompleted = completedMissionIds.has(
               Number((m as { id: number }).id)
             );
             return (
@@ -426,12 +423,11 @@ export default function MissionPlaceDetailPage() {
                 className={`text-[12px] px-3 py-1.5 rounded-full border whitespace-nowrap transition-all ${
                   idx === activeIndex
                     ? "text-white border-transparent bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-violet-500 shadow-sm"
-                    : disabled
-                    ? "bg-neutral-100 text-neutral-400 border-neutral-200 cursor-not-allowed"
+                    : isCompleted
+                    ? "bg-neutral-100 text-neutral-400 border-neutral-200"
                     : "bg-neutral-50 text-neutral-700 border-neutral-200 hover:bg-neutral-100 hover:shadow-sm hover:translate-y-[-1px]"
                 }`}
                 onClick={(ev) => onTabClick(idx, ev)}
-                disabled={disabled}
               >
                 {(m as { title: string }).title}
               </button>

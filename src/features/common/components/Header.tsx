@@ -3,10 +3,11 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuthStore } from "../../../store/auth";
 import { Button } from "../../../shared/components/ui/button";
 import { supabase } from "lib/supabaseClient";
+import { fetchMyProfileSummary } from "../../../services/userService";
 
 const Header = () => {
   const pathname = usePathname();
@@ -14,29 +15,32 @@ const Header = () => {
 
   // 개별 selector 사용으로 서버 스냅샷 안정화
   const user = useAuthStore((s) => s.user);
-  const token = useAuthStore((s) => s.token);
+  // 토큰 의존 제거: Basic 인증 기반으로 프로필을 불러온다
   const initializeFromStorage = useAuthStore((s) => s.initializeFromStorage);
   const fetchProfile = useAuthStore((s) => s.fetchProfile);
   const missionStats = useAuthStore((s) => s.missionStats);
   const fetchMissionStats = useAuthStore((s) => s.fetchMissionStats);
   const signOut = useAuthStore((s) => s.signOut);
 
+  const [summary, setSummary] = useState<
+    import("../../../services/userService").UserProfileSummaryResponse | null
+  >(null);
+
   useEffect(() => {
     initializeFromStorage();
-  }, [initializeFromStorage]);
+    // Basic 인증으로 프로필/미션 통계를 항상 불러온다
+    fetchMyProfileSummary()
+      .then(setSummary)
+      .catch(() => {});
+    fetchMissionStats().catch(() => {});
+  }, [initializeFromStorage, fetchMissionStats]);
 
+  // Supabase 기반 사용자도 병행 지원 (있으면 갱신)
   useEffect(() => {
-    if (token) {
-      fetchProfile().catch(() => {});
-      fetchMissionStats().catch(() => {});
-    }
-  }, [token, fetchProfile, fetchMissionStats]);
+    fetchProfile().catch(() => {});
+  }, [fetchProfile]);
 
-  useEffect(() => {
-    if (token && !missionStats) {
-      fetchMissionStats().catch(() => {});
-    }
-  }, [token, missionStats, fetchMissionStats]);
+  const isLoggedIn = !!summary;
 
   return (
     <header className="relative z-30 w-full border-b border-neutral-200/60 bg-white/80 backdrop-blur-sm px-4 py-2.5 flex flex-col sm:flex-row justify-between items-center">
@@ -56,6 +60,7 @@ const Header = () => {
             <Link href="/my-profile">
               <Image
                 src={
+                  summary?.profile.profileImageUrl ||
                   user?.picture ||
                   "https://storage.googleapis.com/honmoon-bucket/image/honmmon.png"
                 }
@@ -70,16 +75,16 @@ const Header = () => {
             <div className="flex flex-col gap-1.5 min-w-[180px]">
               <div className="flex items-center gap-2">
                 <span className="font-semibold text-[15px] text-neutral-900">
-                  {user?.name || "로그인이 필요합니다"}
+                  {summary?.profile.nickname || user?.name || "사용자"}
                 </span>
-                {user && (
+                {isLoggedIn && (
                   <span className="text-[10px] rounded-full border border-neutral-200 px-1.5 py-0.5 text-neutral-500">
-                    {user.provider?.toUpperCase()}
+                    BASIC
                   </span>
                 )}
               </div>
               <div className="text-[12px] text-neutral-500">
-                {user?.email || "Google 계정으로 로그인하세요"}
+                {summary?.profile.email || user?.email || "이메일 정보 없음"}
               </div>
               {user && missionStats && (
                 <div className="flex items-center gap-2">
@@ -108,7 +113,7 @@ const Header = () => {
             </div>
           )}
           <div className="mt-4 sm:mt-0 ml-auto">
-            {!token ? (
+            {!isLoggedIn ? (
               <div className="flex items-center gap-2">
                 <Button
                   type="button"
@@ -158,7 +163,25 @@ const Header = () => {
                 <Button
                   variant="outline"
                   className="rounded-lg h-8 px-3 border-neutral-200 text-neutral-900 hover:bg-neutral-50"
-                  onClick={() => signOut()}
+                  onClick={() => {
+                    // 항상 로그인 유지: 로그아웃 시에도 다시 요약 프로필을 재로딩
+                    signOut()
+                      .catch(() => {})
+                      .finally(() => {
+                        try {
+                          if (typeof window !== "undefined") {
+                            window.localStorage.setItem(
+                              "currentUserId",
+                              "a5189c38-fbe2-4373-bf6b-d04ea8f2a683"
+                            );
+                          }
+                        } catch {}
+                        fetchMyProfileSummary()
+                          .then(setSummary)
+                          .catch(() => {});
+                        fetchMissionStats().catch(() => {});
+                      });
+                  }}
                 >
                   로그아웃
                 </Button>

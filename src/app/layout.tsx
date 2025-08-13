@@ -1,4 +1,5 @@
 import { Header } from "../features/common";
+import DevAuthBootstrap from "./DevAuthBootstrap";
 import "../shared/styles/globals.css";
 
 /**
@@ -18,6 +19,7 @@ export default function RootLayout({
         />
       </head>
       <body>
+        <DevAuthBootstrap />
         <Header />
         <main className="relative z-20">{children}</main>
       </body>

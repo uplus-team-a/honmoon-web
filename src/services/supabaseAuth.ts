@@ -88,3 +88,11 @@ export async function ensureUserDefaults(defaults: {
       );
   }
 }
+
+export async function storeCurrentUserIdFromSession(): Promise<void> {
+  const { data } = await supabase.auth.getUser();
+  const uid = data.user?.id;
+  if (uid && typeof window !== "undefined") {
+    window.localStorage.setItem("currentUserId", uid);
+  }
+}
