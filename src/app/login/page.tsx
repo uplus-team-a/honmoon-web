@@ -1,30 +1,44 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "../../store/auth";
-import { startGoogleLogin } from "../../services/authService";
+import {
+  startGoogleLogin,
+  loginWithEmailPassword,
+} from "../../services/authService";
 
 export default function LoginPage() {
   const router = useRouter();
-  const loginWithEmail = useAuthStore((s) => s.loginWithEmail);
+  const searchParams = useSearchParams();
+  const initializeFromStorage = useAuthStore((s) => s.initializeFromStorage);
+  const fetchProfile = useAuthStore((s) => s.fetchProfile);
+  const fetchMissionStats = useAuthStore((s) => s.fetchMissionStats);
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const onEmailSubmit = async () => {
-    if (!email.trim()) return;
+  const onPasswordLogin = async () => {
+    if (!email.trim() || !password) return;
     setLoading(true);
     setError(null);
-    setMessage(null);
     try {
-      await loginWithEmail(email.trim());
-      setMessage(
-        "입력한 이메일로 매직 링크를 보냈습니다. 메일함을 확인해 주세요."
-      );
+      const res = await loginWithEmailPassword({
+        email: email.trim(),
+        password,
+      });
+      if (res.appSessionToken && typeof window !== "undefined") {
+        window.localStorage.setItem("appSessionToken", res.appSessionToken);
+      }
+      initializeFromStorage();
+      try {
+        await Promise.all([fetchProfile(), fetchMissionStats()]);
+      } catch {}
+      const redirectAfter = searchParams.get("redirectAfter") || "/my-profile";
+      router.replace(redirectAfter);
     } catch (e) {
-      setError("매직 링크 요청 중 오류가 발생했습니다.");
+      setError("로그인에 실패했습니다. 이메일 또는 비밀번호를 확인해 주세요.");
     } finally {
       setLoading(false);
     }
@@ -37,18 +51,29 @@ export default function LoginPage() {
         <label className="grid gap-1">
           <span className="text-sm text-neutral-600">이메일</span>
           <input
+            type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@example.com"
             className="h-10 rounded-lg border border-neutral-300 px-3 text-[14px] bg-white text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-400"
           />
         </label>
+        <label className="grid gap-1">
+          <span className="text-sm text-neutral-600">비밀번호</span>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="비밀번호를 입력하세요"
+            className="h-10 rounded-lg border border-neutral-300 px-3 text-[14px] bg-white text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+          />
+        </label>
         <button
-          onClick={onEmailSubmit}
-          disabled={loading || !email.trim()}
+          onClick={onPasswordLogin}
+          disabled={loading || !email.trim() || !password}
           className="h-10 rounded-lg px-4 bg-neutral-900 text-white text-[14px] hover:bg-black disabled:opacity-60"
         >
-          이메일로 로그인 링크 받기
+          로그인
         </button>
         <button
           onClick={() => startGoogleLogin("/my-profile")}
@@ -56,8 +81,13 @@ export default function LoginPage() {
         >
           Google로 계속하기
         </button>
-        {message && <div className="text-sm text-green-600">{message}</div>}
         {error && <div className="text-sm text-red-600">{error}</div>}
+        <div className="text-sm text-neutral-600 mt-2">
+          회원가입이 필요하신가요?{" "}
+          <a href="/signup" className="underline">
+            이메일로 회원가입
+          </a>
+        </div>
       </div>
     </div>
   );

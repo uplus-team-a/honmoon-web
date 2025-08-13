@@ -1,4 +1,5 @@
 import { apiFetch } from "../lib/apiClient";
+import { GOOGLE_CALLBACK_URL } from "../constants";
 
 /**
  * 인증 관련 타입 정의
@@ -293,10 +294,7 @@ export function isAuthenticated(): boolean {
  */
 export async function startGoogleLogin(redirectAfter = "/"): Promise<void> {
   if (typeof window === "undefined") return;
-  const envCallback =
-    process.env.NEXT_PUBLIC_FRONTEND_CALLBACK_URL ||
-    "https://honmoon.site/auth/google/callback";
-  const frontendCallbackUrl = envCallback;
+  const frontendCallbackUrl = GOOGLE_CALLBACK_URL;
   const { authorizationUrl } = await getGoogleAuthUrl({
     redirectAfter,
     frontendCallbackUrl,

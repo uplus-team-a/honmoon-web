@@ -3,8 +3,10 @@ export interface ApiRequestOptions extends RequestInit {
   basicAuth?: { username: string; password: string };
 }
 
+import { API_BASE_URL } from "../constants";
+
 const getBaseUrl = () => {
-  return process.env.NEXT_PUBLIC_API_BASE_URL || "https://www.honmoon-api.site";
+  return API_BASE_URL;
 };
 
 const getAuthToken = (): string | null => {
@@ -63,7 +65,7 @@ export async function apiFetch<T = unknown>(
       }
       throw new Error("AUTH_REQUIRED");
     }
-    
+
     const text = await response.text().catch(() => "");
     throw new Error(text || `API 요청 실패: ${response.status}`);
   }

@@ -90,7 +90,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const nameFromEmail = email.split("@")[0] || "사용자";
       let redirectUrl: string | undefined;
       if (typeof window !== "undefined") {
-        redirectUrl = `${window.location.origin}/auth/email/callback`;
+        const { EMAIL_CALLBACK_PATH } = await import("../constants");
+        redirectUrl = `${window.location.origin}${EMAIL_CALLBACK_PATH}`;
       }
       await requestEmailSignup({ email, name: nameFromEmail }, redirectUrl);
       set({ loading: false });

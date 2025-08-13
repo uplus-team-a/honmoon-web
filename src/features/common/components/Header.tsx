@@ -108,7 +108,7 @@ const Header = () => {
             </div>
           )}
           <div className="mt-4 sm:mt-0 ml-auto">
-            {!token ? (
+            {!user ? (
               <div className="flex items-center gap-2">
                 <Button
                   type="button"
