@@ -31,7 +31,9 @@ export interface MissionDetail {
   description?: string;
   quizType?: "TEXT" | "CHOICE" | "IMAGE" | string;
   question?: string;
-  choices?: string[];
+  choices?: {
+    choices: string[];
+  };
   correctAnswer?: string;
   imageUrl?: string;
   pointsReward?: number;

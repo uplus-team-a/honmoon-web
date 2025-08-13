@@ -199,7 +199,10 @@ export default function MissionPage() {
                         선택지를 고르세요
                       </div>
                       <div className="space-y-2">
-                        {(mission.choices || []).map((c, idx) => (
+                        {(Array.isArray(mission.choices?.choices)
+                          ? mission.choices.choices
+                          : []
+                        ).map((c, idx) => (
                           <label
                             key={idx}
                             className="flex items-center gap-2 text-sm"
