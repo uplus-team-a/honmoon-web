@@ -144,13 +144,23 @@ const Header = () => {
                 </Link>
               </div>
             ) : (
-              <Button
-                variant="outline"
-                className="rounded-lg h-8 px-3 border-neutral-200 text-neutral-900 hover:bg-neutral-50"
-                onClick={() => signOut()}
-              >
-                로그아웃
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  className="rounded-lg h-8 px-3 border-neutral-200 text-neutral-900 hover:bg-neutral-50"
+                  onClick={() => signOut()}
+                >
+                  로그아웃
+                </Button>
+                <Link href="/raffle">
+                  <Button
+                    variant="outline"
+                    className="rounded-lg h-9 px-3 text-[13px] font-medium border border-green-600 text-green-600 hover:bg-green-50 active:translate-y-[1px] transition-colors"
+                  >
+                    래플 응모
+                  </Button>
+                </Link>
+              </>
             )}
           </div>
         </>
