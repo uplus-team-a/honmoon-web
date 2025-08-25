@@ -31,10 +31,13 @@ export async function apiFetch<T = unknown>(
     authHeader = { Authorization: `Bearer ${token}` };
   }
 
+  // FormData인 경우 Content-Type을 설정하지 않음 (브라우저가 자동으로 설정)
+  const isFormData = rest.body instanceof FormData;
+
   const response = await fetch(url, {
     ...rest,
     headers: {
-      "Content-Type": "application/json",
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...(headers || {}),
       ...authHeader,
     },
