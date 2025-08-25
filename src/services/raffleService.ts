@@ -8,9 +8,19 @@ export interface RaffleProductSummary {
   id: number | string;
   name: string;
   imageUrl?: string;
-  deadline?: string;
   description?: string;
-  pointsRequired?: number;
+  pointCost: number;
+  createdAt?: string;
+  modifiedAt?: string;
+}
+
+export interface MyRaffleApplication {
+  id: number;
+  userId: string;
+  raffleProductId: number;
+  applicationDate: string;
+  createdAt: string;
+  modifiedAt: string;
 }
 
 export interface RaffleApplication {
@@ -74,16 +84,6 @@ export async function applyRaffle(id: string | number): Promise<boolean> {
     { method: "POST" }
   );
   return Boolean(res.data);
-}
-
-export async function searchRaffleProducts(
-  name: string
-): Promise<RaffleProductSummary[]> {
-  const res = await apiFetch<ApiListResponse<RaffleProductSummary>>(
-    `/api/raffle-products/search?name=${encodeURIComponent(name)}`,
-    { method: "GET" }
-  );
-  return res.data;
 }
 
 export async function fetchRaffleProductsByPoints(
@@ -171,5 +171,44 @@ export async function fetchMyApplicationStatus(
     `/api/raffle-applications/me/product/${productId}`,
     { method: "GET" }
   );
+  return res.data;
+}
+
+/**
+ * 모든 래플 상품 목록 조회 (단일 API 사용)
+ */
+export async function getAllRaffleProducts(): Promise<RaffleProductSummary[]> {
+  const res = await apiFetch<ApiListResponse<RaffleProductSummary>>(
+    "/api/raffle-products",
+    { method: "GET", withAuth: true }
+  );
+  return res.data;
+}
+
+/**
+ * 내 래플 응모 상태 조회
+ */
+export async function getMyRaffleApplications(): Promise<
+  MyRaffleApplication[]
+> {
+  const res = await apiFetch<ApiListResponse<MyRaffleApplication>>(
+    "/api/raffle-applications/me",
+    { method: "GET", withAuth: true }
+  );
+  return res.data;
+}
+
+/**
+ * 내 래플 응모 (단순화된 버전)
+ */
+export async function applyToRaffle(
+  raffleProductId: number | string
+): Promise<{ success: boolean; message: string }> {
+  const res = await apiFetch<
+    ApiItemResponse<{ success: boolean; message: string }>
+  >(`/api/raffle-applications/me?raffleProductId=${raffleProductId}`, {
+    method: "POST",
+    withAuth: true,
+  });
   return res.data;
 }

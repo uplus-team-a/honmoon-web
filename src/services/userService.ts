@@ -142,6 +142,28 @@ export async function updateMyProfile(params: {
   return res.data;
 }
 
+/**
+ * 내 프로필 수정 (새로운 PUT API)
+ * - PUT /api/users/me/profile
+ */
+export async function updateMyProfilePut(params: {
+  nickname?: string;
+  profileImageUrl?: string;
+}): Promise<UserProfileResponse> {
+  const res = await apiFetch<ApiItemResponse<UserProfileResponse>>(
+    "/api/users/me/profile",
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(params),
+      withAuth: true,
+    }
+  );
+  return res.data;
+}
+
 export async function fetchMyProfileSummary(): Promise<UserProfileSummaryResponse> {
   const res = await apiFetch<ApiItemResponse<UserProfileSummaryResponse>>(
     "/api/users/me/profile/summary",

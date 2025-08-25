@@ -1,23 +1,28 @@
 "use client";
 
 import { useEffect } from "react";
+import { useAuthStore } from "../store/auth";
 
 /**
- * 개발용 기본 인증 부트스트랩
- * - 최초 접속 시 Basic 인증용 사용자 ID를 로컬스토리지에 주입한다.
- * - 이미 값이 있으면 덮어쓰지 않는다.
+ * 인증 상태 초기화 컴포넌트
+ * - 저장된 토큰으로 인증 상태를 복원
  */
 export default function DevAuthBootstrap() {
+  const initializeFromStorage = useAuthStore((s) => s.initializeFromStorage);
+  const fetchProfile = useAuthStore((s) => s.fetchProfile);
+  const token = useAuthStore((s) => s.token);
+
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const key = "currentUserId";
-      const presetUserId = "a5189c38-fbe2-4373-bf6b-d04ea8f2a683";
-      const existing = window.localStorage.getItem(key);
-      if (!existing) {
-        window.localStorage.setItem(key, presetUserId);
-      }
-    } catch {}
-  }, []);
+    initializeFromStorage();
+  }, [initializeFromStorage]);
+
+  useEffect(() => {
+    if (token) {
+      fetchProfile().catch(() => {
+        // 토큰이 유효하지 않으면 apiFetch에서 자동으로 로그아웃 처리
+      });
+    }
+  }, [token, fetchProfile]);
+
   return null;
 }

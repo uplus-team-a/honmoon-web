@@ -6,7 +6,11 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   fetchMissionPlaceById,
   fetchMissionsByPlaceId,
+  fetchMissionDetailWithAnswer,
+  completeMission,
+  submitMissionImageAnswer,
   type MissionDetail,
+  type MissionCompleteResponse,
 } from "../../../../services/missionService";
 import { Button } from "../../../../shared/components/ui/button";
 import { MarkerImage } from "../../../../shared/components/ui/marker-image";
@@ -56,11 +60,118 @@ export default function MissionPlaceDetailPage() {
   const [resultMsg, setResultMsg] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [isWrongAnswer, setIsWrongAnswer] = useState(false);
+  const [completionResult, setCompletionResult] =
+    useState<MissionCompleteResponse | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const tabsRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const toastRef = useRef<HTMLDivElement | null>(null);
   const [typedQuestion, setTypedQuestion] = useState<string>("");
   const typingTimerRef = useRef<number | null>(null);
+
+  // 정답 체크 함수
+  const checkAnswer = async (userAnswer: string | number): Promise<boolean> => {
+    if (!activeMission) return false;
+
+    try {
+      const missionDetail = await fetchMissionDetailWithAnswer(
+        activeMission.id
+      );
+
+      if (
+        activeMission.quizType === "QUIZ_MULTIPLE_CHOICE" ||
+        missionDetail.missionType === "QUIZ_MULTIPLE_CHOICE"
+      ) {
+        const correctAnswer =
+          missionDetail.answer || missionDetail.correctAnswer;
+        const correctIndex = missionDetail.choices?.choices.findIndex(
+          (choice) => choice === correctAnswer
+        );
+        return correctIndex === userAnswer;
+      } else if (
+        activeMission.quizType === "QUIZ_TEXT_INPUT" ||
+        missionDetail.missionType === "QUIZ_TEXT_INPUT"
+      ) {
+        const correctAnswer =
+          missionDetail.answer || missionDetail.correctAnswer;
+        return (
+          correctAnswer?.toLowerCase().trim() ===
+          String(userAnswer).toLowerCase().trim()
+        );
+      } else if (
+        activeMission.quizType === "QUIZ_IMAGE_UPLOAD" ||
+        activeMission.quizType === "PHOTO_UPLOAD" ||
+        missionDetail.missionType === "QUIZ_IMAGE_UPLOAD" ||
+        missionDetail.missionType === "PHOTO_UPLOAD"
+      ) {
+        // 이미지 업로드는 handleSubmitAnswer에서 직접 처리
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error("Error checking answer:", error);
+      return false;
+    }
+  };
+
+  // 미션 완료 처리 함수
+  const handleSubmitAnswer = async (userAnswer: string | number) => {
+    if (!activeMission) return;
+
+    setSubmitting(true);
+    setResultMsg("");
+    setIsWrongAnswer(false);
+
+    try {
+      // 이미지 업로드 미션의 경우 직접 처리
+      if (
+        activeMission.quizType === "QUIZ_IMAGE_UPLOAD" ||
+        activeMission.quizType === "PHOTO_UPLOAD"
+      ) {
+        const result = await submitMissionImageAnswer(
+          activeMission.id,
+          String(userAnswer)
+        );
+
+        if (!result.isCorrect) {
+          setIsWrongAnswer(true);
+          setResultMsg("❌ 아쉽습니다. 나중에 다시 도전해주세요!");
+          setSubmitting(false);
+          return;
+        }
+
+        // 이미지 제출이 성공한 경우 완료 API 호출
+        const completionResult = await completeMission(activeMission.id);
+        setCompletionResult(completionResult);
+        setShowSuccessModal(true);
+        setSubmitting(false);
+        return;
+      }
+
+      // 일반 미션의 경우 기존 로직
+      const isCorrect = await checkAnswer(userAnswer);
+
+      if (!isCorrect) {
+        // 오답 처리
+        setIsWrongAnswer(true);
+        setResultMsg("❌ 아쉽습니다. 나중에 다시 도전해주세요!");
+        setSubmitting(false);
+        return;
+      }
+
+      // 정답인 경우 완료 API 호출
+      const result = await completeMission(activeMission.id);
+      setCompletionResult(result);
+      setShowSuccessModal(true);
+      setSubmitting(false);
+    } catch (error) {
+      console.error("Submit error:", error);
+      setResultMsg("❌ 제출 중 오류가 발생했습니다.");
+      setSubmitting(false);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -473,50 +584,46 @@ export default function MissionPlaceDetailPage() {
 
               {/* 타입별 인터랙션 */}
               {missionType === "QUIZ_TEXT_INPUT" && (
-                <div className="space-y-2">
-                  <div className="text-sm font-medium">정답 입력</div>
-                  <input
-                    value={textAnswer}
-                    onChange={(e) => setTextAnswer(e.target.value)}
-                    placeholder="정답을 입력하세요"
-                    className="w-full h-11 px-3 border rounded-md"
-                  />
+                <div className="space-y-4">
+                  <div className="text-sm font-medium text-gray-700">
+                    ✍️ 정답을 입력하세요
+                  </div>
+                  <div className="relative">
+                    <input
+                      value={textAnswer}
+                      onChange={(e) => setTextAnswer(e.target.value)}
+                      placeholder="정답을 입력해주세요..."
+                      className="w-full h-12 px-4 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg placeholder-gray-400 transition-all"
+                      onKeyPress={(e) => {
+                        if (
+                          e.key === "Enter" &&
+                          textAnswer.trim() &&
+                          !submitting
+                        ) {
+                          const submitBtn = document.getElementById(
+                            "text-submit-btn"
+                          ) as HTMLButtonElement;
+                          submitBtn?.click();
+                        }
+                      }}
+                    />
+                    {textAnswer.trim() && (
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        <span className="text-green-500">✓</span>
+                      </div>
+                    )}
+                  </div>
                   <Button
-                    disabled={submitting}
-                    onClick={async () => {
-                      setSubmitting(true);
-                      setResultMsg("");
-                      const { submitQuizText } = await import(
-                        "../../../../services/missionService"
-                      );
-                      try {
-                        const res = await submitQuizText(
-                          activeMission.id,
-                          textAnswer
-                        );
-                        setResultMsg(
-                          res.isCorrect ? "정답입니다!" : "오답입니다."
-                        );
-                        if (res.isCorrect) fireConfetti();
-                        else playShake();
-                        showToast(
-                          res.isCorrect
-                            ? "정답! 포인트가 적립됐어요"
-                            : "아쉽어요! 다시 도전해요",
-                          res.isCorrect ? "success" : "error"
-                        );
-                      } catch {
-                        setResultMsg("제출 실패");
-                        playShake();
-                        showToast("제출 실패", "error");
-                      } finally {
-                        setSubmitting(false);
-                      }
-                    }}
-                    className="transition active:translate-y-[1px] hover:scale-[1.02]"
+                    id="text-submit-btn"
+                    disabled={submitting || !textAnswer.trim() || isWrongAnswer}
+                    onClick={() => handleSubmitAnswer(textAnswer.trim())}
+                    className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white font-semibold py-3 rounded-lg transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
                   >
-                    제출
+                    {submitting ? "제출 중..." : "정답 제출"}
                   </Button>
+                  <div className="text-xs text-gray-500 text-center">
+                    💡 Enter 키를 눌러도 제출할 수 있어요
+                  </div>
                 </div>
               )}
 
@@ -549,37 +656,8 @@ export default function MissionPlaceDetailPage() {
                     ))}
                   </div>
                   <Button
-                    disabled={submitting}
-                    onClick={async () => {
-                      setSubmitting(true);
-                      setResultMsg("");
-                      const { submitQuizChoice } = await import(
-                        "../../../../services/missionService"
-                      );
-                      try {
-                        const res = await submitQuizChoice(
-                          activeMission.id,
-                          choiceIndex
-                        );
-                        setResultMsg(
-                          res.isCorrect ? "정답입니다!" : "오답입니다."
-                        );
-                        if (res.isCorrect) fireConfetti();
-                        else playShake();
-                        showToast(
-                          res.isCorrect
-                            ? "정답! 포인트가 적립됐어요"
-                            : "아쉽어요! 다시 도전해요",
-                          res.isCorrect ? "success" : "error"
-                        );
-                      } catch {
-                        setResultMsg("제출 실패");
-                        playShake();
-                        showToast("제출 실패", "error");
-                      } finally {
-                        setSubmitting(false);
-                      }
-                    }}
+                    disabled={submitting || isWrongAnswer}
+                    onClick={() => handleSubmitAnswer(choiceIndex)}
                     className="transition active:translate-y-[1px] hover:scale-[1.02]"
                   >
                     제출
@@ -589,22 +667,93 @@ export default function MissionPlaceDetailPage() {
 
               {(missionType === "QUIZ_IMAGE_UPLOAD" ||
                 missionType === "PHOTO_UPLOAD") && (
-                <div className="space-y-2">
-                  <div className="text-sm font-medium">이미지 URL</div>
-                  <input
-                    value={imageUrl}
-                    onChange={(e) => setImageUrl(e.target.value)}
-                    placeholder="업로드된 이미지 URL"
-                    className="w-full h-11 px-3 border rounded-md"
-                  />
-                  <div className="text-xs text-neutral-600">
-                    또는 파일을 선택해 업로드하세요
+                <div className="space-y-4">
+                  <div className="text-sm font-medium">이미지 업로드</div>
+
+                  {/* 이미지 미리보기 */}
+                  {imageUrl && (
+                    <div className="relative bg-gray-50 rounded-lg p-3 border border-gray-200">
+                      <div className="flex items-start gap-3">
+                        <img
+                          src={imageUrl}
+                          alt="업로드된 이미지"
+                          className="w-20 h-20 object-cover rounded-lg border border-gray-300 shadow-sm flex-shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-gray-900 mb-1">
+                            업로드된 이미지
+                          </div>
+                          <div className="text-xs text-gray-500 break-all">
+                            {imageUrl}
+                          </div>
+                          <div className="mt-2 text-xs text-green-600 font-medium">
+                            ✅ 업로드 완료
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setImageUrl("")}
+                          className="bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition-colors flex-shrink-0"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* URL 직접 입력 */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      이미지 URL (직접 입력)
+                    </label>
+                    <input
+                      value={imageUrl}
+                      onChange={(e) => setImageUrl(e.target.value)}
+                      placeholder="https://example.com/image.jpg"
+                      className="w-full h-11 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
                   </div>
+
+                  <div className="text-center text-xs text-gray-500">또는</div>
+
+                  {/* 파일 업로드 */}
                   <label
                     htmlFor="mission-image-input"
-                    className="mt-1 block rounded-xl border-2 border-dashed border-neutral-200 p-4 text-center text-[12px] text-neutral-500 cursor-pointer hover:border-neutral-300 transition"
+                    className={`mt-1 block rounded-xl border-2 border-dashed p-6 text-center cursor-pointer transition-all ${
+                      uploading
+                        ? "border-blue-300 bg-blue-50"
+                        : "border-gray-300 hover:border-blue-400 hover:bg-gray-50"
+                    }`}
                   >
-                    여기를 클릭하거나 파일을 드래그하세요
+                    {uploading ? (
+                      <div className="flex flex-col items-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2"></div>
+                        <span className="text-sm text-blue-600 font-medium">
+                          업로드 중...
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center">
+                        <svg
+                          className="w-8 h-8 text-gray-400 mb-2"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                          />
+                        </svg>
+                        <span className="text-sm text-gray-600 font-medium">
+                          클릭하여 이미지 선택
+                        </span>
+                        <span className="text-xs text-gray-400 mt-1">
+                          PNG, JPG, JPEG (최대 10MB)
+                        </span>
+                      </div>
+                    )}
                   </label>
                   <input
                     id="mission-image-input"
@@ -614,65 +763,47 @@ export default function MissionPlaceDetailPage() {
                     onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (!file) return;
+
+                      if (file.size > 10 * 1024 * 1024) {
+                        setResultMsg("파일 크기는 10MB 이하여야 합니다.");
+                        return;
+                      }
+
                       setUploading(true);
                       setResultMsg("");
                       try {
-                        const { getGcsUploadUrl } = await import(
+                        const { uploadImageComplete } = await import(
                           "../../../../services/uploadService"
                         );
-                        const presign = await getGcsUploadUrl(
-                          file.name,
-                          file.type || "application/octet-stream"
+                        const publicUrl = await uploadImageComplete(file);
+                        setImageUrl(publicUrl);
+                        setResultMsg(
+                          "✅ 이미지 업로드 완료! 아래 제출 버튼을 클릭하세요."
                         );
-                        await fetch(presign.uploadUrl, {
-                          method: "PUT",
-                          body: file,
-                          headers: { "Content-Type": file.type },
-                        });
-                        setImageUrl(presign.publicUrl);
-                        setResultMsg("업로드 완료. 제출을 눌러주세요.");
-                      } catch {
-                        setResultMsg("업로드 실패");
+                      } catch (error) {
+                        console.error("Image upload failed:", error);
+                        setResultMsg(
+                          `❌ 업로드 실패: ${
+                            error instanceof Error
+                              ? error.message
+                              : "알 수 없는 오류"
+                          }`
+                        );
                       } finally {
                         setUploading(false);
                       }
                     }}
                   />
+
+                  {/* 제출 버튼 */}
                   <Button
-                    disabled={submitting || uploading}
-                    onClick={async () => {
-                      setSubmitting(true);
-                      setResultMsg("");
-                      const { submitQuizImage } = await import(
-                        "../../../../services/missionService"
-                      );
-                      try {
-                        const res = await submitQuizImage(
-                          activeMission.id,
-                          imageUrl
-                        );
-                        setResultMsg(
-                          res.isCorrect ? "정답입니다!" : "오답입니다."
-                        );
-                        if (res.isCorrect) fireConfetti();
-                        else playShake();
-                        showToast(
-                          res.isCorrect
-                            ? "정답! 포인트가 적립됐어요"
-                            : "아쉽어요! 다시 도전해요",
-                          res.isCorrect ? "success" : "error"
-                        );
-                      } catch {
-                        setResultMsg("제출 실패");
-                        playShake();
-                        showToast("제출 실패", "error");
-                      } finally {
-                        setSubmitting(false);
-                      }
-                    }}
-                    className="transition active:translate-y-[1px] hover:scale-[1.02]"
+                    disabled={
+                      submitting || uploading || !imageUrl || isWrongAnswer
+                    }
+                    onClick={() => handleSubmitAnswer(imageUrl)}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 rounded-lg transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
                   >
-                    제출
+                    {submitting ? "제출 중..." : "이미지 제출"}
                   </Button>
                 </div>
               )}
@@ -683,30 +814,8 @@ export default function MissionPlaceDetailPage() {
                     해당 장소를 방문하면 완료 처리됩니다.
                   </div>
                   <Button
-                    disabled={submitting}
-                    onClick={async () => {
-                      setSubmitting(true);
-                      setResultMsg("");
-                      const { submitQuizNoInput } = await import(
-                        "../../../../services/missionService"
-                      );
-                      try {
-                        const res = await submitQuizNoInput(activeMission.id);
-                        setResultMsg(
-                          res.isCorrect
-                            ? "완료 처리되었습니다."
-                            : "처리되었습니다."
-                        );
-                        fireConfetti();
-                        showToast("완료 처리되었습니다", "success");
-                      } catch {
-                        setResultMsg("제출 실패");
-                        playShake();
-                        showToast("제출 실패", "error");
-                      } finally {
-                        setSubmitting(false);
-                      }
-                    }}
+                    disabled={submitting || isWrongAnswer}
+                    onClick={() => handleSubmitAnswer("visit")}
                     className="transition active:translate-y-[1px] hover:scale-[1.02]"
                   >
                     완료 처리하기
@@ -724,31 +833,8 @@ export default function MissionPlaceDetailPage() {
                     className="w-full h-11 px-3 border rounded-md"
                   />
                   <Button
-                    disabled={submitting}
-                    onClick={async () => {
-                      setSubmitting(true);
-                      setResultMsg("");
-                      const { submitQuizText } = await import(
-                        "../../../../services/missionService"
-                      );
-                      try {
-                        const res = await submitQuizText(
-                          activeMission.id,
-                          textAnswer
-                        );
-                        setResultMsg(
-                          res.isCorrect ? "접수되었습니다." : "접수되었습니다."
-                        );
-                        fireConfetti();
-                        showToast("제출되었습니다", "success");
-                      } catch {
-                        setResultMsg("제출 실패");
-                        playShake();
-                        showToast("제출 실패", "error");
-                      } finally {
-                        setSubmitting(false);
-                      }
-                    }}
+                    disabled={submitting || isWrongAnswer}
+                    onClick={() => handleSubmitAnswer(textAnswer)}
                     className="transition active:translate-y-[1px] hover:scale-[1.02]"
                   >
                     제출
@@ -757,7 +843,13 @@ export default function MissionPlaceDetailPage() {
               )}
 
               {resultMsg && (
-                <div className="text-center text-sm text-neutral-700">
+                <div
+                  className={`text-center text-sm p-4 rounded-lg ${
+                    isWrongAnswer
+                      ? "bg-red-50 border border-red-200 text-red-700"
+                      : "text-neutral-700"
+                  }`}
+                >
                   {resultMsg}
                 </div>
               )}
@@ -769,6 +861,120 @@ export default function MissionPlaceDetailPage() {
           )}
         </div>
       </div>
+
+      {/* 성공 모달 - 메인페이지 스타일 */}
+      {showSuccessModal && completionResult && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          {/* 폭죽 효과 */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            {Array.from({ length: 30 }).map((_, i) => (
+              <div
+                key={i}
+                className="confetti-piece"
+                style={{
+                  left: `${Math.random() * 100}%`,
+                  top: `${Math.random() * 50}%`,
+                  backgroundColor: [
+                    "#3b82f6",
+                    "#8b5cf6",
+                    "#ec4899",
+                    "#f59e0b",
+                    "#10b981",
+                  ][Math.floor(Math.random() * 5)],
+                  animationDelay: `${Math.random() * 2}s`,
+                  animationDuration: `${2 + Math.random() * 2}s`,
+                }}
+              />
+            ))}
+            {/* 반짝이는 별 효과 */}
+            {Array.from({ length: 12 }).map((_, i) => (
+              <div
+                key={`star-${i}`}
+                className="sparkle"
+                style={{
+                  left: `${20 + Math.random() * 60}%`,
+                  top: `${20 + Math.random() * 60}%`,
+                  animationDelay: `${Math.random() * 2}s`,
+                }}
+              >
+                ✨
+              </div>
+            ))}
+          </div>
+
+          <div className="success-modal-enter bg-gradient-to-br from-blue-50/95 via-white/90 to-purple-50/95 backdrop-blur-md rounded-3xl p-8 max-w-md w-full shadow-2xl border border-white/60 relative overflow-hidden">
+            {/* 배경 그라디언트 오버레이 */}
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-100/20 via-purple-100/20 to-pink-100/20 rounded-3xl"></div>
+
+            <div className="relative text-center">
+              {/* 성공 아이콘 - 혼문 스타일 */}
+              <div className="mb-6">
+                <div className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 rounded-3xl mb-4 shadow-xl transform hover:scale-105 transition-transform">
+                  <span className="text-4xl">🎉</span>
+                </div>
+                <div className="flex items-center justify-center gap-2">
+                  <h3 className="text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+                    축하합니다!
+                  </h3>
+                  <div className="w-2 h-2 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full animate-pulse"></div>
+                </div>
+                <p className="text-lg text-gray-700 font-medium mt-2">
+                  미션 완료! 포인트가 적립되었습니다
+                </p>
+              </div>
+
+              {/* 포인트 정보 - 혼문 스타일 카드 */}
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-purple-100 hover:bg-white/95 transition-all group cursor-pointer transform hover:scale-105 shadow-lg mb-6">
+                <div className="flex items-center justify-center gap-3 mb-3">
+                  <div className="text-4xl group-hover:scale-110 transition-transform">
+                    💰
+                  </div>
+                  <div className="text-center">
+                    <div className="text-3xl font-bold bg-gradient-to-r from-orange-500 to-yellow-500 bg-clip-text text-transparent">
+                      +{completionResult.userActivity.pointsEarned}
+                    </div>
+                    <div className="text-sm font-medium text-gray-600">
+                      포인트
+                    </div>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-700 font-medium">
+                  {completionResult.message}
+                </p>
+              </div>
+
+              {/* 해설 섹션 - 혼문 스타일 */}
+              {completionResult.missionDetail.answerExplanation && (
+                <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-blue-100 hover:bg-white/95 transition-all group shadow-lg mb-6">
+                  <div className="flex items-center justify-center gap-2 mb-3">
+                    <span className="text-2xl group-hover:scale-110 transition-transform">
+                      💡
+                    </span>
+                    <h4 className="font-bold text-gray-800 text-lg">해설</h4>
+                  </div>
+                  <p className="text-gray-700 leading-relaxed">
+                    {completionResult.missionDetail.answerExplanation}
+                  </p>
+                </div>
+              )}
+
+              {/* 확인 버튼 - 혼문 스타일 */}
+              <Button
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  setCompletedMissionIds(
+                    (prev) => new Set([...prev, activeMission.id])
+                  );
+                }}
+                className="w-full bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 text-white font-bold py-4 rounded-2xl text-lg shadow-xl transform hover:scale-105 active:scale-95 transition-all"
+              >
+                <span className="mr-2">🚀</span>
+                다음 미션으로!
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

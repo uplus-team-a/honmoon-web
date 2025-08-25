@@ -49,7 +49,7 @@ export default function RaffleInfo() {
     }
 
     fetchRaffleItems();
-  }, [supabaseUrl, supabaseAnonKey]); // supabase는 URL/KEY 의존
+  }, []);
 
   useEffect(() => {
     if (raffleItems.length === 0) {

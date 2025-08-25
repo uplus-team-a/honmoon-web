@@ -1,7 +1,23 @@
 import OpenAI from "openai";
 
+/**
+ * AI 호출 실패 시 사용할 다양한 기본 메시지들
+ */
+const getRandomDefaultMessage = (): string => {
+  const messages = [
+    "오늘은 어디로 놀러가볼까요?",
+    "새로운 장소를 탐험해보세요!",
+    "근처 맛집을 찾아볼까요?",
+    "산책하기 좋은 곳을 둘러보세요",
+    "특별한 추억을 만들어볼까요?",
+    "어떤 곳이 궁금하신가요?",
+    "여행 떠날 준비 되셨나요?",
+  ];
+  return messages[Math.floor(Math.random() * messages.length)];
+};
+
 export async function GET() {
-  const DEFAULT_TEXT = "장소 (예시: 한강)";
+  const DEFAULT_TEXT = getRandomDefaultMessage();
   try {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {

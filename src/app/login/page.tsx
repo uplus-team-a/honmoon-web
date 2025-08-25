@@ -1,132 +1,136 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "../../store/auth";
+import dynamic from "next/dynamic";
+
+const HonmoonSealed = dynamic(
+  () =>
+    import("../../features/honmoon/components/HonmoonSealed").then(
+      (m) => m.default
+    ),
+  { ssr: false }
+);
 
 export default function LoginPage() {
   const router = useRouter();
-  const loginWithEmailPasswordSupabase = useAuthStore(
-    (s) =>
-      (
-        s as unknown as {
-          loginWithEmailPasswordSupabase: (
-            email: string,
-            password: string
-          ) => Promise<boolean>;
-        }
-      ).loginWithEmailPasswordSupabase
-  );
-  const signupWithEmailPasswordSupabase = useAuthStore(
-    (s) =>
-      (
-        s as unknown as {
-          signupWithEmailPasswordSupabase: (
-            email: string,
-            password: string,
-            name?: string
-          ) => Promise<boolean>;
-        }
-      ).signupWithEmailPasswordSupabase
-  );
+  const loginWithEmail = useAuthStore((s) => s.loginWithEmail);
   const loading = useAuthStore((s) => s.loading);
   const error = useAuthStore((s) => s.error);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [showBackdrop, setShowBackdrop] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShowBackdrop(true), 300);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await loginWithEmail(email, password);
+      // 로그인 성공 시 홈페이지로 이동
+      router.replace("/");
+    } catch (err) {
+      console.error("로그인 실패:", err);
+    }
+  };
 
   return (
-    <div className="max-w-md mx-auto px-4 py-10">
-      <h1 className="text-2xl font-bold">
-        {mode === "login" ? "로그인" : "회원가입"}
-      </h1>
-      <div className="mt-6 grid gap-4">
-        <div className="flex gap-2 text-sm">
-          <button
-            type="button"
-            className={`px-3 py-1.5 rounded border ${
-              mode === "login" ? "bg-black text-white" : "border-neutral-300"
-            }`}
-            onClick={() => setMode("login")}
-          >
-            로그인
-          </button>
-          <button
-            type="button"
-            className={`px-3 py-1.5 rounded border ${
-              mode === "signup" ? "bg-black text-white" : "border-neutral-300"
-            }`}
-            onClick={() => setMode("signup")}
-          >
-            회원가입
-          </button>
+    <div className="min-h-screen relative overflow-hidden">
+      {/* 배경 애니메이션 */}
+      {showBackdrop && (
+        <div className="pointer-events-none fixed inset-0 z-0">
+          <HonmoonSealed autoplay={false} />
         </div>
+      )}
 
-        <label className="grid gap-1">
-          <span className="text-sm text-neutral-600">이메일</span>
-          <input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            type="email"
-            className="h-10 rounded-lg border border-neutral-300 px-3 text-[14px] bg-white text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-400"
-          />
-        </label>
-        {mode === "signup" && (
-          <label className="grid gap-1">
-            <span className="text-sm text-neutral-600">이름 (선택)</span>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="홍길동"
-              className="h-10 rounded-lg border border-neutral-300 px-3 text-[14px] bg-white text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-400"
-            />
-          </label>
-        )}
-        <label className="grid gap-1">
-          <span className="text-sm text-neutral-600">비밀번호</span>
-          <input
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            type="password"
-            placeholder="8자 이상"
-            className="h-10 rounded-lg border border-neutral-300 px-3 text-[14px] bg-white text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-400"
-          />
-        </label>
-        {mode === "login" ? (
-          <button
-            onClick={async () => {
-              const ok = await loginWithEmailPasswordSupabase(
-                email.trim(),
-                password
-              );
-              if (ok) router.replace("/my-profile");
-            }}
-            disabled={loading || !email.trim() || password.length < 8}
-            className="h-10 rounded-lg px-4 bg-neutral-900 text-white text-[14px] hover:bg-black disabled:opacity-60"
-          >
-            로그인
-          </button>
-        ) : (
-          <button
-            onClick={async () => {
-              const ok = await signupWithEmailPasswordSupabase(
-                email.trim(),
-                password,
-                name || email.split("@")[0]
-              );
-              if (ok) {
-                alert("가입 메일을 보냈습니다. 이메일 인증 후 로그인하세요.");
-              }
-            }}
-            disabled={loading || !email.trim() || password.length < 8}
-            className="h-10 rounded-lg px-4 bg-neutral-900 text-white text-[14px] hover:bg-black disabled:opacity-60"
-          >
-            회원가입 (이메일 인증 필요)
-          </button>
-        )}
-        {error && <div className="text-sm text-red-600">{error}</div>}
+      {/* 그라데이션 오버레이 */}
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-50/80 via-white/90 to-purple-50/80 z-10" />
+
+      {/* 로그인 폼 */}
+      <div className="relative z-20 flex items-center justify-center min-h-screen p-4">
+        <div className="w-full max-w-md">
+          {/* 로고/제목 영역 */}
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg">
+              <span className="text-2xl text-white font-bold">🏛️</span>
+            </div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              환영합니다
+            </h1>
+            <p className="text-gray-600">혼문에서 새로운 여행을 시작하세요</p>
+          </div>
+
+          {/* 폼 카드 */}
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/50 p-8">
+            <form onSubmit={onSubmit} className="space-y-6">
+              <div>
+                <label
+                  htmlFor="email"
+                  className="block text-sm font-semibold text-gray-700 mb-2"
+                >
+                  이메일 주소
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  required
+                  placeholder="your@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all bg-white/70"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="password"
+                  className="block text-sm font-semibold text-gray-700 mb-2"
+                >
+                  비밀번호
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  required
+                  placeholder="비밀번호를 입력해주세요"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all bg-white/70"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading || !email || !password}
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 px-6 rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg"
+              >
+                {loading ? "로그인 중..." : "로그인"}
+              </button>
+            </form>
+
+            {error && (
+              <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-xl">
+                <p className="text-red-600 text-sm font-medium">{error}</p>
+              </div>
+            )}
+
+            <div className="mt-8 text-center">
+              <p className="text-gray-600 text-sm">
+                계정이 없으신가요?{" "}
+                <button
+                  onClick={() => router.push("/signup")}
+                  className="text-blue-600 font-semibold hover:text-blue-700 transition-colors"
+                >
+                  회원가입하기
+                </button>
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

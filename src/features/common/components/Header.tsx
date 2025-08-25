@@ -3,11 +3,10 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useAuthStore } from "../../../store/auth";
 import { Button } from "../../../shared/components/ui/button";
-import { supabase } from "lib/supabaseClient";
-import { fetchMyProfileSummary } from "../../../services/userService";
+import { Card, CardContent } from "../../../shared/components/ui/card";
 
 const Header = () => {
   const pathname = usePathname();
@@ -15,188 +14,251 @@ const Header = () => {
 
   // 개별 selector 사용으로 서버 스냅샷 안정화
   const user = useAuthStore((s) => s.user);
-  // 토큰 의존 제거: Basic 인증 기반으로 프로필을 불러온다
+  const userDetail = useAuthStore((s) => s.userDetail);
+  const token = useAuthStore((s) => s.token);
   const initializeFromStorage = useAuthStore((s) => s.initializeFromStorage);
   const fetchProfile = useAuthStore((s) => s.fetchProfile);
-  const missionStats = useAuthStore((s) => s.missionStats);
+  const fetchProfileDetail = useAuthStore((s) => s.fetchProfileDetail);
   const fetchMissionStats = useAuthStore((s) => s.fetchMissionStats);
   const signOut = useAuthStore((s) => s.signOut);
 
-  const [summary, setSummary] = useState<
-    import("../../../services/userService").UserProfileSummaryResponse | null
-  >(null);
-
   useEffect(() => {
     initializeFromStorage();
-    // Basic 인증으로 프로필/미션 통계를 항상 불러온다
-    fetchMyProfileSummary()
-      .then(setSummary)
-      .catch(() => {});
-    fetchMissionStats().catch(() => {});
-  }, [initializeFromStorage, fetchMissionStats]);
+  }, [initializeFromStorage]);
 
-  // Supabase 기반 사용자도 병행 지원 (있으면 갱신)
   useEffect(() => {
-    fetchProfile().catch(() => {});
-  }, [fetchProfile]);
+    if (token) {
+      fetchProfile().catch(() => {});
+      fetchProfileDetail().catch(() => {});
+      fetchMissionStats().catch(() => {});
+    }
+  }, [token, fetchProfile, fetchProfileDetail, fetchMissionStats]);
 
-  const isLoggedIn = !!summary;
+  const isLoggedIn = !!token && !!user;
 
   return (
-    <header className="relative z-30 w-full border-b border-neutral-200/60 bg-white/80 backdrop-blur-sm px-4 py-2.5 flex flex-col sm:flex-row justify-between items-center">
-      <div className="flex items-center gap-4 flex-1">
-        <>
+    <header className="relative z-30 w-full border-b border-neutral-200/60 bg-white/90 backdrop-blur-md px-4 py-2 shadow-sm">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          {/* 프로필 이미지 */}
           {isMyProfilePage ? (
-            <Link href="/" className="inline-flex items-center">
+            <Link href="/" className="inline-flex items-center shrink-0">
               <Image
                 src="https://storage.googleapis.com/honmoon-bucket/image/honmmon.png"
                 alt="홈"
-                width={44}
-                height={44}
-                className="w-11 h-11 rounded-full border border-neutral-200 object-cover"
+                width={60}
+                height={60}
+                className="w-14 h-14 rounded-full border-2 border-neutral-200 object-cover hover:border-blue-300 transition-colors shadow-sm"
               />
             </Link>
-          ) : (
-            <Link href="/my-profile">
+          ) : isLoggedIn ? (
+            <Link href="/my-profile" className="shrink-0">
               <Image
                 src={
-                  summary?.profile.profileImageUrl ||
-                  user?.picture ||
+                  userDetail?.profile.profileImageUrl ||
+                  user?.profile.profileImageUrl ||
                   "https://storage.googleapis.com/honmoon-bucket/image/honmmon.png"
                 }
                 alt="프로필"
-                width={44}
-                height={44}
-                className="w-11 h-11 rounded-full border border-neutral-200 object-cover"
+                width={60}
+                height={60}
+                className="w-14 h-14 rounded-full border-2 border-neutral-200 object-cover hover:border-blue-300 transition-colors shadow-sm"
               />
             </Link>
+          ) : (
+            <Link href="/login" className="shrink-0">
+              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 border-2 border-blue-200 flex items-center justify-center hover:from-blue-200 hover:to-purple-200 transition-all cursor-pointer shadow-sm">
+                <span className="text-xl">🏛️</span>
+              </div>
+            </Link>
           )}
+
+          {/* 사용자 정보 - 프로필 이미지 바로 옆에 */}
           {!isMyProfilePage && (
-            <div className="flex flex-col gap-1.5 min-w-[180px]">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-[15px] text-neutral-900">
-                  {summary?.profile.nickname || user?.name || "사용자"}
-                </span>
-                {isLoggedIn && (
-                  <span className="text-[10px] rounded-full border border-neutral-200 px-1.5 py-0.5 text-neutral-500">
-                    BASIC
+            <div className="flex-1">
+              {/* 사용자 기본 정보와 포인트 - 한 줄에 배치 */}
+              <div className="flex items-center gap-4">
+                {/* 사용자 이름과 이메일 */}
+                <div className="flex flex-col">
+                  <span className="font-bold text-[16px] text-neutral-900">
+                    {isLoggedIn
+                      ? userDetail?.profile.nickname ||
+                        user?.profile.nickname ||
+                        "사용자"
+                      : "혼문에 가입해주세요!"}
                   </span>
+                  {isLoggedIn && userDetail?.profile.email && (
+                    <div className="text-[10px] text-neutral-500 bg-neutral-100 px-2 py-1 rounded-full w-fit">
+                      {userDetail.profile.email}
+                    </div>
+                  )}
+                </div>
+
+                {/* 현재 포인트 - 컴팩트 카드 */}
+                {isLoggedIn && userDetail && (
+                  <Card className="group relative border-0 shadow-none bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 hover:shadow-md hover:scale-105 transition-all duration-300 cursor-pointer">
+                    <CardContent className="p-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center shadow-sm group-hover:shadow-lg transition-shadow">
+                          <span className="text-white text-sm font-bold">
+                            💎
+                          </span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-neutral-600 font-medium">
+                            현재
+                          </span>
+                          <span className="text-[15px] font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                            {userDetail.pointsSummary.currentPoints.toLocaleString()}
+                            P
+                          </span>
+                        </div>
+                      </div>
+                    </CardContent>
+
+                    {/* 호버 툴팁 */}
+                    <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-20 pointer-events-none">
+                      <div className="bg-blue-600 text-white text-xs py-2 px-3 rounded-lg shadow-lg whitespace-nowrap">
+                        <div className="text-center">
+                          <div className="font-bold">현재 보유 포인트</div>
+                          <div className="text-blue-100">
+                            {userDetail.pointsSummary.currentPoints.toLocaleString()}
+                            P
+                          </div>
+                        </div>
+                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-blue-600"></div>
+                      </div>
+                    </div>
+                  </Card>
+                )}
+
+                {/* 활동 통계 - 가로 배열 컴팩트 카드들 */}
+                {isLoggedIn && userDetail && (
+                  <>
+                    {/* 총 적립 */}
+                    <Card className="group relative cursor-pointer border-0 bg-gradient-to-br from-green-50 to-emerald-50 hover:from-green-100 hover:to-emerald-100 transition-all duration-300 hover:shadow-md hover:scale-105">
+                      <CardContent className="p-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-gradient-to-r from-green-400 to-emerald-400 flex items-center justify-center">
+                            <span className="text-white text-sm">↗</span>
+                          </div>
+                          <span className="text-[14px] text-green-700 font-bold">
+                            +
+                            {userDetail.pointsSummary.totalEarned.toLocaleString()}
+                          </span>
+                        </div>
+                      </CardContent>
+
+                      {/* 호버 툴팁 */}
+                      <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-20 pointer-events-none">
+                        <div className="bg-green-600 text-white text-xs py-2 px-3 rounded-lg shadow-lg whitespace-nowrap">
+                          <div className="text-center">
+                            <div className="font-bold">총 적립 포인트</div>
+                            <div className="text-green-100">
+                              +
+                              {userDetail.pointsSummary.totalEarned.toLocaleString()}
+                              P
+                            </div>
+                          </div>
+                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-green-600"></div>
+                        </div>
+                      </div>
+                    </Card>
+
+                    {/* 총 사용 */}
+                    <Card className="group relative cursor-pointer border-0 bg-gradient-to-br from-red-50 to-rose-50 hover:from-red-100 hover:to-rose-100 transition-all duration-300 hover:shadow-md hover:scale-105">
+                      <CardContent className="p-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-gradient-to-r from-red-400 to-rose-400 flex items-center justify-center">
+                            <span className="text-white text-sm">↙</span>
+                          </div>
+                          <span className="text-[14px] text-red-700 font-bold">
+                            -
+                            {userDetail.pointsSummary.totalUsed.toLocaleString()}
+                          </span>
+                        </div>
+                      </CardContent>
+
+                      {/* 호버 툴팁 */}
+                      <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-20 pointer-events-none">
+                        <div className="bg-red-600 text-white text-xs py-2 px-3 rounded-lg shadow-lg whitespace-nowrap">
+                          <div className="text-center">
+                            <div className="font-bold">총 사용 포인트</div>
+                            <div className="text-red-100">
+                              -
+                              {userDetail.pointsSummary.totalUsed.toLocaleString()}
+                              P
+                            </div>
+                          </div>
+                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-red-600"></div>
+                        </div>
+                      </div>
+                    </Card>
+
+                    {/* 총 활동 */}
+                    <Card className="group relative cursor-pointer border-0 bg-gradient-to-br from-purple-50 to-violet-50 hover:from-purple-100 hover:to-violet-100 transition-all duration-300 hover:shadow-md hover:scale-105">
+                      <CardContent className="p-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-gradient-to-r from-purple-400 to-violet-400 flex items-center justify-center">
+                            <span className="text-white text-sm">⚡</span>
+                          </div>
+                          <span className="text-[14px] text-purple-700 font-bold">
+                            {userDetail.profile.totalActivities}회
+                          </span>
+                        </div>
+                      </CardContent>
+
+                      {/* 호버 툴팁 */}
+                      <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-20 pointer-events-none">
+                        <div className="bg-purple-600 text-white text-xs py-2 px-3 rounded-lg shadow-lg whitespace-nowrap">
+                          <div className="text-center">
+                            <div className="font-bold">총 활동 횟수</div>
+                            <div className="text-purple-100">
+                              {userDetail.profile.totalActivities}회
+                            </div>
+                          </div>
+                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-purple-600"></div>
+                        </div>
+                      </div>
+                    </Card>
+                  </>
                 )}
               </div>
-              <div className="text-[12px] text-neutral-500">
-                {summary?.profile.email || user?.email || "이메일 정보 없음"}
-              </div>
-              {user && missionStats && (
-                <div className="flex items-center gap-2">
-                  <div className="w-36 h-2 rounded-full bg-neutral-100 overflow-hidden">
-                    <div
-                      className="h-full bg-neutral-900 transition-[width] duration-500"
-                      style={{
-                        width: `${Math.round(
-                          (missionStats.completedMissions /
-                            Math.max(1, missionStats.totalMissions)) *
-                            100
-                        )}%`,
-                      }}
-                    />
-                  </div>
-                  <span className="text-[11px] text-neutral-500 tabular-nums">
-                    {Math.round(
-                      (missionStats.completedMissions /
-                        Math.max(1, missionStats.totalMissions)) *
-                        100
-                    )}
-                    %
-                  </span>
-                </div>
-              )}
             </div>
           )}
-          <div className="mt-4 sm:mt-0 ml-auto">
-            {!isLoggedIn ? (
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() =>
-                    supabase.auth.signInWithOAuth({
-                      provider: "google",
-                      options: {
-                        redirectTo:
-                          typeof window !== "undefined"
-                            ? `${window.location.origin}/auth/callback`
-                            : undefined,
-                      },
-                    })
-                  }
-                  className="rounded-lg h-9 px-3 text-[13px] font-medium border border-neutral-200 bg-white text-neutral-900 hover:bg-neutral-50 active:translate-y-[1px] transition-colors"
-                >
-                  <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" aria-hidden>
-                    <path
-                      fill="#4285F4"
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                    />
-                    <path
-                      fill="#34A853"
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                    />
-                    <path
-                      fill="#FBBC05"
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                    />
-                    <path
-                      fill="#EA4335"
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                    />
-                  </svg>
-                  Google로 계속하기
-                </Button>
-                <Link
-                  href="/login"
-                  className="rounded-lg h-9 px-3 text-[13px] font-medium border border-neutral-200 bg-white text-neutral-900 hover:bg-neutral-50 active:translate-y-[1px] transition-colors inline-flex items-center"
-                >
-                  이메일 로그인
-                </Link>
-              </div>
-            ) : (
-              <>
+        </div>
+
+        {/* 우측 버튼들 */}
+        <div className="flex items-center gap-2 shrink-0">
+          {!isLoggedIn ? (
+            <Link
+              href="/login"
+              className="rounded-lg h-9 px-4 text-[13px] font-medium border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 active:translate-y-[1px] transition-all inline-flex items-center shadow-sm"
+            >
+              이메일 로그인
+            </Link>
+          ) : (
+            <>
+              <Link href="/raffle">
                 <Button
                   variant="outline"
-                  className="rounded-lg h-8 px-3 border-neutral-200 text-neutral-900 hover:bg-neutral-50"
-                  onClick={() => {
-                    // 항상 로그인 유지: 로그아웃 시에도 다시 요약 프로필을 재로딩
-                    signOut()
-                      .catch(() => {})
-                      .finally(() => {
-                        try {
-                          if (typeof window !== "undefined") {
-                            window.localStorage.setItem(
-                              "currentUserId",
-                              "a5189c38-fbe2-4373-bf6b-d04ea8f2a683"
-                            );
-                          }
-                        } catch {}
-                        fetchMyProfileSummary()
-                          .then(setSummary)
-                          .catch(() => {});
-                        fetchMissionStats().catch(() => {});
-                      });
-                  }}
+                  className="rounded-lg h-9 px-4 text-[13px] font-medium border border-green-500 bg-green-50 text-green-700 hover:bg-green-100 active:translate-y-[1px] transition-all shadow-sm"
                 >
-                  로그아웃
+                  🎁 래플 응모
                 </Button>
-                <Link href="/raffle">
-                  <Button
-                    variant="outline"
-                    className="rounded-lg h-9 px-3 text-[13px] font-medium border border-green-600 text-green-600 hover:bg-green-50 active:translate-y-[1px] transition-colors"
-                  >
-                    래플 응모
-                  </Button>
-                </Link>
-              </>
-            )}
-          </div>
-        </>
+              </Link>
+              <Button
+                variant="outline"
+                className="rounded-lg h-9 px-3 text-[12px] border-red-200 text-red-600 hover:bg-red-50 transition-colors"
+                onClick={() => {
+                  signOut();
+                }}
+              >
+                로그아웃
+              </Button>
+            </>
+          )}
+        </div>
       </div>
       {/* 우측 상단 '홈' 버튼 제거 */}
     </header>

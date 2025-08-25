@@ -1,18 +1,14 @@
-/**
- * 미션 및 장소 서비스
- * - 미션 장소/미션 상세 조회 및 퀴즈 제출, 이미지 업로드 URL 발급을 처리한다.
- */
 import { apiFetch } from "../lib/apiClient";
-import { getSessionToken, startGoogleLogin } from "./authService";
+import { getImageUploadUrl } from "./uploadService";
 
 export interface MissionPlaceSummary {
   id: number;
-  title: string; // 호환: name -> title 매핑
-  lat: number; // 호환: latitude -> lat
-  lng: number; // 호환: longitude -> lng
-  imageUrl?: string; // 호환: image -> imageUrl
-  description?: string; // 호환: location -> description
-  missions?: MissionSummary[]; // 상세 포함 응답
+  title: string;
+  lat: number;
+  lng: number;
+  imageUrl?: string;
+  description?: string;
+  missions?: MissionSummary[];
 }
 
 export type MissionPlaceDetail = MissionPlaceSummary;
@@ -37,6 +33,16 @@ export interface MissionDetail {
   correctAnswer?: string;
   imageUrl?: string;
   pointsReward?: number;
+  // 새로운 API 응답 필드들
+  points?: number;
+  missionType?: string;
+  placeId?: number;
+  answer?: string;
+  answerExplanation?: string;
+  correctImageUrl?: string;
+  imageUploadInstruction?: string;
+  createdAt?: string;
+  modifiedAt?: string;
 }
 
 export interface ApiListResponse<T> {
@@ -51,78 +57,32 @@ export interface ApiItemResponse<T> {
   message: string;
 }
 
-/**
- * 로그인 전(dev)에는 Basic 인증을 사용하도록 옵션을 구성한다.
- */
-function authOptionsForRequest(): {
-  withAuth?: boolean;
-  basicAuth?: { username: string; password: string };
-  headers?: Record<string, string>;
-} {
-  const token = getSessionToken();
-  if (token) return {};
-  const envBasic = process.env.NEXT_PUBLIC_BASIC_AUTH_TOKEN;
-  if (envBasic) {
-    return { withAuth: false, headers: { Authorization: envBasic } };
-  }
-  return {
-    withAuth: false,
-    basicAuth: { username: "jiwondev", password: "jiwondev" },
-  };
-}
-
-async function handleAuthRedirectOn401(error: unknown): Promise<void> {
-  if (typeof window === "undefined") return;
-  if (error instanceof Error && error.message === "AUTH_REQUIRED") {
-    try {
-      await startGoogleLogin(window.location.pathname || "/");
-    } catch {
-      // ignore
-    }
-  }
-}
-
 export async function fetchMissionPlaces(): Promise<MissionPlaceSummary[]> {
-  try {
-    const res = await apiFetch<ApiListResponse<MissionPlaceSummary>>(
-      "/api/mission-places",
-      { method: "GET", ...authOptionsForRequest() }
-    );
-    return res.data;
-  } catch (e) {
-    await handleAuthRedirectOn401(e);
-    throw e;
-  }
+  const res = await apiFetch<ApiListResponse<MissionPlaceSummary>>(
+    "/api/mission-places",
+    { method: "GET", withAuth: true }
+  );
+  return res.data;
 }
 
 export async function fetchMissionPlaceById(
   id: number
 ): Promise<MissionPlaceDetail> {
-  try {
-    const res = await apiFetch<ApiItemResponse<MissionPlaceDetail>>(
-      `/api/mission-places/${id}`,
-      { method: "GET", ...authOptionsForRequest() }
-    );
-    return res.data;
-  } catch (e) {
-    await handleAuthRedirectOn401(e);
-    throw e;
-  }
+  const res = await apiFetch<ApiItemResponse<MissionPlaceDetail>>(
+    `/api/mission-places/${id}`,
+    { method: "GET", withAuth: true }
+  );
+  return res.data;
 }
 
 export async function fetchMissionsByPlaceId(
   id: number
 ): Promise<MissionDetail[]> {
-  try {
-    const res = await apiFetch<ApiListResponse<MissionDetail>>(
-      `/api/mission-places/${id}/missions`,
-      { method: "GET", ...authOptionsForRequest() }
-    );
-    return res.data;
-  } catch (e) {
-    await handleAuthRedirectOn401(e);
-    throw e;
-  }
+  const res = await apiFetch<ApiListResponse<MissionDetail>>(
+    `/api/mission-places/${id}/missions`,
+    { method: "GET", withAuth: true }
+  );
+  return res.data;
 }
 
 export interface SubmitQuizResult {
@@ -130,73 +90,93 @@ export interface SubmitQuizResult {
   pointsEarned: number;
 }
 
+export interface MissionCompleteResponse {
+  missionDetail: MissionDetail;
+  userActivity: {
+    id: number;
+    userId: string;
+    placeId: number;
+    missionId: number;
+    description?: string;
+    isCorrect: boolean;
+    isCompleted: boolean;
+    pointsEarned: number;
+    textAnswer?: string;
+    selectedChoiceIndex?: number;
+    uploadedImageUrl?: string;
+    createdAt: string;
+    modifiedAt: string;
+    aiResult?: string;
+    alreadyExists?: boolean;
+  };
+  message: string;
+}
+
 export async function submitQuizText(
   missionId: number,
   textAnswer: string
 ): Promise<SubmitQuizResult> {
-  const res = await fetch(`/api/missions/${missionId}/submit`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ textAnswer }),
-  });
-  if (!res.ok) throw new Error("submit failed");
-  const json = (await res.json()) as ApiItemResponse<SubmitQuizResult>;
-  return json.data;
+  const res = await apiFetch<ApiItemResponse<SubmitQuizResult>>(
+    `/api/missions/${missionId}/submit-quiz?textAnswer=${encodeURIComponent(
+      textAnswer
+    )}`,
+    {
+      method: "POST",
+      withAuth: true,
+    }
+  );
+  return res.data;
 }
 
 export async function submitQuizChoice(
   missionId: number,
   selectedChoiceIndex: number
 ): Promise<SubmitQuizResult> {
-  const res = await fetch(`/api/missions/${missionId}/submit`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ selectedChoiceIndex }),
-  });
-  if (!res.ok) throw new Error("submit failed");
-  const json = (await res.json()) as ApiItemResponse<SubmitQuizResult>;
-  return json.data;
+  const res = await apiFetch<ApiItemResponse<SubmitQuizResult>>(
+    `/api/missions/${missionId}/submit-quiz?selectedChoiceIndex=${selectedChoiceIndex}`,
+    {
+      method: "POST",
+      withAuth: true,
+    }
+  );
+  return res.data;
 }
 
 export async function submitQuizImage(
   missionId: number,
   uploadedImageUrl: string
 ): Promise<SubmitQuizResult> {
-  const res = await fetch(`/api/missions/${missionId}/submit`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ uploadedImageUrl }),
-  });
-  if (!res.ok) throw new Error("submit failed");
-  const json = (await res.json()) as ApiItemResponse<SubmitQuizResult>;
-  return json.data;
+  const res = await apiFetch<ApiItemResponse<SubmitQuizResult>>(
+    `/api/missions/${missionId}/submit-quiz?uploadedImageUrl=${encodeURIComponent(
+      uploadedImageUrl
+    )}`,
+    {
+      method: "POST",
+      withAuth: true,
+    }
+  );
+  return res.data;
 }
 
-/**
- * 입력값 없이 퀴즈 제출 (PLACE_VISIT 등)
- */
 export async function submitQuizNoInput(
   missionId: number
 ): Promise<SubmitQuizResult> {
-  const res = await fetch(`/api/missions/${missionId}/submit`, {
-    method: "POST",
-  });
-  if (!res.ok) throw new Error("submit failed");
-  const json = (await res.json()) as ApiItemResponse<SubmitQuizResult>;
-  return json.data;
+  const res = await apiFetch<ApiItemResponse<SubmitQuizResult>>(
+    `/api/missions/${missionId}/submit-quiz`,
+    {
+      method: "POST",
+      withAuth: true,
+    }
+  );
+  return res.data;
 }
 
 export async function fetchMissionById(id: number): Promise<MissionDetail> {
-  try {
-    const res = await apiFetch<ApiItemResponse<MissionDetail>>(
-      `/api/missions/${id}`,
-      { method: "GET", ...authOptionsForRequest() }
-    );
-    return res.data;
-  } catch (e) {
-    await handleAuthRedirectOn401(e);
-    throw e;
-  }
+  const res = await apiFetch<ApiItemResponse<MissionDetail>>(
+    `/api/missions/${id}`,
+    { method: "GET", withAuth: true }
+  );
+  return res.data;
 }
 
 export async function submitMissionAnswer(
@@ -208,22 +188,7 @@ export async function submitMissionAnswer(
     {
       method: "POST",
       body: JSON.stringify({ answer }),
-      ...authOptionsForRequest(),
-    }
-  );
-  return res.data;
-}
-
-export async function submitMissionImageAnswer(
-  missionId: number,
-  imageUrl: string
-): Promise<SubmitQuizResult> {
-  const res = await apiFetch<ApiItemResponse<SubmitQuizResult>>(
-    `/api/missions/${missionId}/submit-image-answer`,
-    {
-      method: "POST",
-      body: JSON.stringify({ imageUrl }),
-      ...authOptionsForRequest(),
+      withAuth: true,
     }
   );
   return res.data;
@@ -238,33 +203,23 @@ export async function getMissionImageUploadUrl(
   missionId: number,
   fileName: string
 ): Promise<PresignedUrlResponse> {
-  try {
-    const res = await apiFetch<ApiItemResponse<PresignedUrlResponse>>(
-      `/api/missions/${missionId}/image/upload-url?fileName=${encodeURIComponent(
-        fileName
-      )}`,
-      { method: "POST", ...authOptionsForRequest() }
-    );
-    return res.data;
-  } catch (e) {
-    await handleAuthRedirectOn401(e);
-    throw e;
-  }
+  const res = await apiFetch<ApiItemResponse<PresignedUrlResponse>>(
+    `/api/missions/${missionId}/image/upload-url?fileName=${encodeURIComponent(
+      fileName
+    )}`,
+    { method: "POST", withAuth: true }
+  );
+  return res.data;
 }
 
 export async function searchMissionPlaces(
   title: string
 ): Promise<MissionPlaceSummary[]> {
-  try {
-    const res = await apiFetch<ApiListResponse<MissionPlaceSummary>>(
-      `/api/mission-places/search?title=${encodeURIComponent(title)}`,
-      { method: "GET", ...authOptionsForRequest() }
-    );
-    return res.data;
-  } catch (e) {
-    await handleAuthRedirectOn401(e);
-    throw e;
-  }
+  const res = await apiFetch<ApiListResponse<MissionPlaceSummary>>(
+    `/api/mission-places/search?title=${encodeURIComponent(title)}`,
+    { method: "GET", withAuth: true }
+  );
+  return res.data;
 }
 
 export async function fetchNearbyMissionPlaces(
@@ -272,14 +227,47 @@ export async function fetchNearbyMissionPlaces(
   lng: number,
   radius = 1000
 ): Promise<MissionPlaceSummary[]> {
-  try {
-    const res = await apiFetch<ApiListResponse<MissionPlaceSummary>>(
-      `/api/mission-places/nearby?lat=${lat}&lng=${lng}&radius=${radius}`,
-      { method: "GET", ...authOptionsForRequest() }
-    );
-    return res.data;
-  } catch (e) {
-    await handleAuthRedirectOn401(e);
-    throw e;
-  }
+  const res = await apiFetch<ApiListResponse<MissionPlaceSummary>>(
+    `/api/mission-places/nearby?lat=${lat}&lng=${lng}&radius=${radius}`,
+    { method: "GET", withAuth: true }
+  );
+  return res.data;
+}
+
+// 새로운 미션 이미지 답변 제출 API
+export async function submitMissionImageAnswer(
+  missionId: number,
+  imageUrl: string
+): Promise<SubmitQuizResult> {
+  const res = await apiFetch<ApiItemResponse<SubmitQuizResult>>(
+    `/api/missions/${missionId}/submit-image-answer`,
+    {
+      method: "POST",
+      body: JSON.stringify({ imageUrl }),
+      withAuth: true,
+    }
+  );
+  return res.data;
+}
+
+// 새로운 미션 상세 조회 API (정답 포함)
+export async function fetchMissionDetailWithAnswer(
+  missionId: number
+): Promise<MissionDetail> {
+  const res = await apiFetch<ApiItemResponse<MissionDetail>>(
+    `/api/missions/${missionId}`,
+    { method: "GET", withAuth: true }
+  );
+  return res.data;
+}
+
+// 새로운 미션 완료 API
+export async function completeMission(
+  missionId: number
+): Promise<MissionCompleteResponse> {
+  const res = await apiFetch<ApiItemResponse<MissionCompleteResponse>>(
+    `/api/missions/${missionId}/complete`,
+    { method: "POST", withAuth: true }
+  );
+  return res.data;
 }

@@ -1,18 +1,19 @@
 import { create } from "zustand";
-import { subscribeWithSelector } from "zustand/middleware";
 import {
-  requestEmailSignup,
-  exchangeEmailToken,
-  type ProfileResponse,
+  sendSignupEmail,
+  loginWithEmailPassword,
+  verifySignupToken,
+  getMyProfileSummary,
+  getMyProfileDetail,
+  updateMyProfile,
+  saveAuthToken,
+  removeAuthToken,
+  getAuthToken,
+  type LoginResponse,
+  type VerifyTokenResponse,
+  type ProfileSummaryResponse,
+  type ProfileDetailResponse,
 } from "../services/authService";
-import {
-  getCurrentProfile,
-  signOutSupabase,
-  signInWithEmailPassword,
-  signUpWithEmailPassword,
-  ensureUserDefaults,
-  storeCurrentUserIdFromSession,
-} from "../services/supabaseAuth";
 import {
   fetchMyMissionStats,
   type MissionStats,
@@ -23,28 +24,27 @@ import {
  */
 export interface AuthState {
   token: string | null;
-  user: ProfileResponse | null;
+  user: ProfileSummaryResponse | null;
+  userDetail: ProfileDetailResponse | null;
   missionStats: MissionStats | null;
   loading: boolean;
   error: string | null;
   initializeFromStorage: () => void;
   fetchProfile: () => Promise<void>;
+  fetchProfileDetail: () => Promise<void>;
   fetchMissionStats: () => Promise<void>;
-  loginWithEmail: (email: string) => Promise<void>;
-  handleEmailCallback: (
+  updateProfile: (data: {
+    nickname?: string;
+    profileImageUrl?: string;
+  }) => Promise<void>;
+  sendSignupEmail: (email: string, callbackUrl?: string) => Promise<void>;
+  loginWithEmail: (email: string, password: string) => Promise<LoginResponse>;
+  verifySignup: (
     token: string,
-    purpose?: "signup" | "login"
-  ) => Promise<void>;
-  signOut: () => Promise<void>;
-  loginWithEmailPasswordSupabase: (
-    email: string,
+    nickname: string,
     password: string
-  ) => Promise<boolean>;
-  signupWithEmailPasswordSupabase: (
-    email: string,
-    password: string,
-    name?: string
-  ) => Promise<boolean>;
+  ) => Promise<VerifyTokenResponse>;
+  signOut: () => Promise<void>;
 }
 
 const parseErrorMessage = (error: unknown): string => {
@@ -59,6 +59,7 @@ const parseErrorMessage = (error: unknown): string => {
 export const useAuthStore = create<AuthState>((set, get) => ({
   token: null,
   user: null,
+  userDetail: null,
   missionStats: null,
   loading: false,
   error: null,
@@ -66,7 +67,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   initializeFromStorage: () => {
     if (typeof window === "undefined") return;
     try {
-      const storedToken = window.localStorage.getItem("appSessionToken");
+      const storedToken = getAuthToken();
       if (storedToken) {
         set({ token: storedToken });
       }
@@ -76,11 +77,24 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   fetchProfile: async () => {
     set({ loading: true, error: null });
     try {
-      const user = await getCurrentProfile();
+      const user = await getMyProfileSummary();
       set({ user, loading: false });
     } catch (e: unknown) {
       set({
         error: parseErrorMessage(e) || "프로필 조회 실패",
+        loading: false,
+      });
+    }
+  },
+
+  fetchProfileDetail: async () => {
+    set({ loading: true, error: null });
+    try {
+      const userDetail = await getMyProfileDetail();
+      set({ userDetail, loading: false });
+    } catch (e: unknown) {
+      set({
+        error: parseErrorMessage(e) || "프로필 상세 조회 실패",
         loading: false,
       });
     }
@@ -99,91 +113,84 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  loginWithEmail: async (email: string) => {
+  updateProfile: async (data: {
+    nickname?: string;
+    profileImageUrl?: string;
+  }) => {
     set({ loading: true, error: null });
     try {
-      const nameFromEmail = email.split("@")[0] || "사용자";
-      let redirectUrl: string | undefined;
-      if (typeof window !== "undefined") {
-        redirectUrl = `${window.location.origin}/auth/email/callback`;
-      }
-      await requestEmailSignup({ email, name: nameFromEmail }, redirectUrl);
+      await updateMyProfile(data);
+      // 업데이트 후 프로필 정보 다시 가져오기
+      await get().fetchProfile();
+      await get().fetchProfileDetail();
       set({ loading: false });
     } catch (e: unknown) {
       set({
-        error: parseErrorMessage(e) || "매직 링크 요청 실패",
+        error: parseErrorMessage(e) || "프로필 업데이트 실패",
         loading: false,
       });
+      throw e;
     }
   },
 
-  handleEmailCallback: async (
-    token: string,
-    purpose: "signup" | "login" = "login"
-  ) => {
+  sendSignupEmail: async (email: string, callbackUrl?: string) => {
     set({ loading: true, error: null });
     try {
-      const data = await exchangeEmailToken({ token, purpose });
-      if (typeof window !== "undefined" && data.appSessionToken) {
-        window.localStorage.setItem("appSessionToken", data.appSessionToken);
-      }
-      set({ token: data.appSessionToken || null });
-      await get().fetchProfile();
+      await sendSignupEmail(email, callbackUrl);
       set({ loading: false });
     } catch (e: unknown) {
       set({
-        error: parseErrorMessage(e) || "매직 링크 검증 실패",
+        error: parseErrorMessage(e) || "회원가입 이메일 발송 실패",
         loading: false,
       });
+      throw e;
+    }
+  },
+
+  loginWithEmail: async (email: string, password: string) => {
+    set({ loading: true, error: null });
+    try {
+      const response = await loginWithEmailPassword(email, password);
+      saveAuthToken(response.token);
+      set({ token: response.token, loading: false });
+      await get().fetchProfile();
+      return response;
+    } catch (e: unknown) {
+      set({
+        error: parseErrorMessage(e) || "로그인 실패",
+        loading: false,
+      });
+      throw e;
+    }
+  },
+
+  verifySignup: async (token: string, nickname: string, password: string) => {
+    set({ loading: true, error: null });
+    try {
+      const response = await verifySignupToken(token, nickname, password);
+      saveAuthToken(response.token);
+      set({ token: response.token, loading: false });
+      await get().fetchProfile();
+      return response;
+    } catch (e: unknown) {
+      set({
+        error: parseErrorMessage(e) || "회원가입 완료 실패",
+        loading: false,
+      });
+      throw e;
     }
   },
 
   signOut: async () => {
     set({ loading: true, error: null });
     try {
-      await signOutSupabase();
-    } catch {}
-    if (typeof window !== "undefined") {
-      try {
-        window.localStorage.removeItem("appSessionToken");
-        window.localStorage.removeItem("currentUserId");
-      } catch {}
+      removeAuthToken();
+      set({ token: null, user: null, userDetail: null, loading: false });
+    } catch (e: unknown) {
+      set({
+        error: parseErrorMessage(e) || "로그아웃 실패",
+        loading: false,
+      });
     }
-    set({ token: null, user: null, loading: false });
-  },
-  // 추가: 이메일/비밀번호 로그인/회원가입(Supabase)
-  async loginWithEmailPasswordSupabase(
-    email: string,
-    password: string
-  ): Promise<boolean> {
-    set({ loading: true, error: null });
-    const ok = await signInWithEmailPassword({ email, password });
-    if (!ok) {
-      set({ loading: false, error: "이메일/비밀번호 로그인 실패" });
-      return false;
-    }
-    await storeCurrentUserIdFromSession();
-    await ensureUserDefaults({
-      profile_image_url:
-        "https://storage.googleapis.com/honmoon-bucket/image/honmmon.png",
-    });
-    await get().fetchProfile();
-    set({ loading: false });
-    return true;
-  },
-  async signupWithEmailPasswordSupabase(
-    email: string,
-    password: string,
-    name?: string
-  ): Promise<boolean> {
-    set({ loading: true, error: null });
-    const ok = await signUpWithEmailPassword({ email, password, name });
-    if (!ok) {
-      set({ loading: false, error: "회원가입 실패" });
-      return false;
-    }
-    // 이메일 인증이 필요한 케이스: 세션이 즉시 생기지 않을 수 있어 바로 프로필 로딩하지 않음
-    set({ loading: false });
-    return true;
   },
 }));

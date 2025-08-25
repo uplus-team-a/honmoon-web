@@ -173,6 +173,22 @@ const MapWithMarkers: React.FC<MapWithMarkersProps> = ({ focusMarkerId }) => {
     [setMarkerVisibility]
   );
 
+  /**
+   * AI 호출 실패 시 사용할 다양한 기본 메시지들
+   */
+  const getRandomDefaultMessage = (): string => {
+    const messages = [
+      "오늘은 어디로 놀러가볼까요?",
+      "새로운 장소를 탐험해보세요!",
+      "근처 맛집을 찾아볼까요?",
+      "산책하기 좋은 곳을 둘러보세요",
+      "특별한 추억을 만들어볼까요?",
+      "어떤 곳이 궁금하신가요?",
+      "여행 떠날 준비 되셨나요?",
+    ];
+    return messages[Math.floor(Math.random() * messages.length)];
+  };
+
   // AI placeholder (OpenAI 기반, 최초에는 빈 문자열 유지 후 지연 호출)
   const [aiPlaceholder, setAiPlaceholder] = useState<string>("");
   useEffect(() => {
@@ -190,10 +206,10 @@ const MapWithMarkers: React.FC<MapWithMarkersProps> = ({ focusMarkerId }) => {
           });
           if (!res.ok) throw new Error("bad_response");
           const data = (await res.json()) as { text?: string };
-          const text = (data?.text || "장소 (예시: 한강)").toString();
+          const text = (data?.text || getRandomDefaultMessage()).toString();
           if (!cancelled) setAiPlaceholder(text);
         } catch {
-          if (!cancelled) setAiPlaceholder("장소 (예시: 한강)");
+          if (!cancelled) setAiPlaceholder(getRandomDefaultMessage());
         } finally {
           if (abortTimer) clearTimeout(abortTimer);
         }
@@ -480,6 +496,13 @@ const MapWithMarkers: React.FC<MapWithMarkersProps> = ({ focusMarkerId }) => {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === "Enter" && query.trim() && !isSearching) {
+                  const searchBtn =
+                    e.currentTarget.parentElement?.querySelector("button");
+                  searchBtn?.click();
+                }
+              }}
               placeholder={renderPlaceholder}
               className="flex-1 h-10 rounded-xl border border-neutral-200 px-3 text-[14px] bg-white text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-300 transition-colors"
             />

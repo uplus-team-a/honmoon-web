@@ -1,137 +1,111 @@
 "use client";
 
 import { useState } from "react";
-import { useAuthStore as useAuthStoreBase, type AuthState } from "store/auth";
-import { requestEmailSignup } from "../../services/authService";
-import { useRouter } from "next/navigation";
 import { useAuthStore } from "store/auth";
+import { useRouter } from "next/navigation";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
-  const [password, setPwd] = useState("");
-  const [mode, setMode] = useState<"magic" | "password">("magic");
   const [sent, setSent] = useState(false);
-  const loginWithEmail = useAuthStoreBase((s: AuthState) => s.loginWithEmail);
-  const loginWithEmailPasswordSupabase = useAuthStore(
-    (s) => (s as unknown as { loginWithEmailPasswordSupabase: (email: string, password: string) => Promise<void> }).loginWithEmailPasswordSupabase
-  );
-  const signupWithEmailPasswordSupabase = useAuthStore(
-    (s) => (s as unknown as { signupWithEmailPasswordSupabase: (email: string, password: string, name?: string) => Promise<void> }).signupWithEmailPasswordSupabase
-  );
-  const loading = useAuthStore((s: AuthState) => s.loading);
-  const error = useAuthStore((s: AuthState) => s.error);
+  const sendSignupEmail = useAuthStore((s) => s.sendSignupEmail);
+  const loading = useAuthStore((s) => s.loading);
+  const error = useAuthStore((s) => s.error);
   const router = useRouter();
 
-  const onSubmitMagic = async (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // 회원가입용 매직 링크 요청
-    await requestEmailSignup(
-      { email, name: name || email.split("@")[0] },
-      undefined
-    );
-    setSent(true);
-  };
-
-  const onSubmitPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await loginWithEmailPasswordSupabase(email, password);
-    router.replace("/my-profile");
+    try {
+      // 콜백 URL 설정 - 이메일에 포함될 토큰 검증 페이지
+      const callbackUrl = `${window.location.origin}/auth/verify`;
+      await sendSignupEmail(email, callbackUrl);
+      setSent(true);
+    } catch (err) {
+      // 에러는 store에서 관리됨
+      console.error("회원가입 이메일 발송 실패:", err);
+    }
   };
 
   return (
     <div className="max-w-md mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-4">회원가입 / 로그인</h1>
-      <div className="mb-3 flex gap-2 text-sm">
-        <button
-          type="button"
-          className={`px-3 py-1.5 rounded border ${
-            mode === "magic" ? "bg-black text-white" : "border-neutral-300"
-          }`}
-          onClick={() => setMode("magic")}
-        >
-          이메일 링크로 받기
-        </button>
-        <button
-          type="button"
-          className={`px-3 py-1.5 rounded border ${
-            mode === "password" ? "bg-black text-white" : "border-neutral-300"
-          }`}
-          onClick={() => setMode("password")}
-        >
-          비밀번호로 로그인
-        </button>
-      </div>
+      <h1 className="text-2xl font-bold mb-6">회원가입</h1>
 
-      <form
-        onSubmit={mode === "magic" ? onSubmitMagic : onSubmitPassword}
-        className="space-y-3"
-      >
-        <input
-          type="email"
-          required
-          placeholder="you@example.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full border rounded px-3 py-2"
-        />
-        {mode === "magic" ? (
-          <input
-            type="text"
-            placeholder="이름 (선택)"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full border rounded px-3 py-2"
-          />
-        ) : (
-          <input
-            type="password"
-            placeholder="비밀번호"
-            value={password}
-            onChange={(e) => setPwd(e.target.value)}
-            className="w-full border rounded px-3 py-2"
-            minLength={8}
-            required
-          />
-        )}
-        <button
-          type="submit"
-          disabled={
-            loading || !email || (mode === "password" && password.length < 8)
-          }
-          className="w-full border rounded px-3 py-2 bg-black text-white disabled:opacity-50"
-        >
-          {loading
-            ? "전송 중…"
-            : mode === "magic"
-            ? "로그인/가입 링크 받기"
-            : "이메일/비밀번호로 로그인"}
-        </button>
-      </form>
-      {mode === "password" && (
-        <div className="mt-4 text-sm text-neutral-600">
-          계정이 없나요?{" "}
+      {!sent ? (
+        <form onSubmit={onSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium mb-2">
+              이메일 주소
+            </label>
+            <input
+              id="email"
+              type="email"
+              required
+              placeholder="your@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
           <button
-            className="underline"
-            onClick={async () => {
-              await signupWithEmailPasswordSupabase(
-                email,
-                password,
-                name || email.split("@")[0]
-              );
-              router.replace("/my-profile");
-            }}
+            type="submit"
+            disabled={loading || !email}
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            이메일/비밀번호로 회원가입
+            {loading ? "발송 중..." : "인증 이메일 발송"}
+          </button>
+        </form>
+      ) : (
+        <div className="text-center">
+          <div className="mb-4 text-green-600">
+            <svg
+              className="w-16 h-16 mx-auto mb-4"
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
+              <path
+                fillRule="evenodd"
+                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                clipRule="evenodd"
+              />
+            </svg>
+            <h2 className="text-xl font-bold mb-2">이메일을 확인해주세요!</h2>
+            <p className="text-gray-600">
+              <strong>{email}</strong>로 인증 링크를 발송했습니다.
+            </p>
+            <p className="text-gray-600 mt-2">
+              이메일에서 링크를 클릭하여 회원가입을 완료해주세요.
+            </p>
+          </div>
+
+          <button
+            onClick={() => {
+              setSent(false);
+              setEmail("");
+            }}
+            className="text-blue-600 underline"
+          >
+            다른 이메일로 재발송
           </button>
         </div>
       )}
-      {sent && (
-        <div className="mt-4 text-green-600 text-sm">
-          입력하신 주소로 로그인 링크를 보냈습니다. 메일함을 확인해주세요.
+
+      {error && (
+        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-red-600 text-sm">{error}</p>
         </div>
       )}
-      {error && <div className="mt-4 text-red-600 text-sm">{error}</div>}
+
+      <div className="mt-6 text-center">
+        <p className="text-gray-600 text-sm">
+          이미 계정이 있으신가요?{" "}
+          <button
+            onClick={() => router.push("/login")}
+            className="text-blue-600 underline"
+          >
+            로그인하기
+          </button>
+        </p>
+      </div>
     </div>
   );
 }
