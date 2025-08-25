@@ -168,9 +168,6 @@ export default function MissionPlaceDetailPage() {
         setShowSuccessModal(true);
         setSubmitting(false);
 
-        // 헤더 포인트 정보 갱신
-        fetchProfileDetail().catch(() => {});
-        fetchProfile().catch(() => {});
         return;
       }
 
@@ -191,9 +188,7 @@ export default function MissionPlaceDetailPage() {
       setShowSuccessModal(true);
       setSubmitting(false);
 
-      // 헤더 포인트 정보 갱신
-      fetchProfileDetail().catch(() => {});
-      fetchProfile().catch(() => {});
+
     } catch (error) {
       console.error("Submit error:", error);
       setResultMsg("❌ 제출 중 오류가 발생했습니다.");
