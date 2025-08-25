@@ -400,8 +400,8 @@ export default function RafflePage() {
         </div>
 
         {/* 보유 포인트 - 카드 위로 이동 */}
-        <div className="flex justify-center mb-8">
-          <div className="inline-flex items-center bg-white rounded-full px-6 py-3 shadow-lg border border-gray-200 hover:shadow-xl transition-shadow">
+        <div className="flex justify-center items-center gap-3 mb-8">
+          <div className="inline-flex items-center bg-white rounded-full px-6 py-3 shadow-lg border border-gray-200">
             <span className="text-sm font-medium text-gray-600 mr-2">
               💰 보유 포인트:
             </span>
@@ -409,6 +409,27 @@ export default function RafflePage() {
               {currentPoints.toLocaleString()}P
             </span>
           </div>
+
+          {/* 홈 버튼 */}
+          <button
+            onClick={() => (window.location.href = "/")}
+            className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all transform hover:scale-110 active:scale-95"
+            title="홈으로 가기"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-7a1 1 0 011-1h2a1 1 0 011 1v7a1 1 0 001 1m-6 0h6"
+              />
+            </svg>
+          </button>
         </div>
 
         {/* 내가 응모한 래플들 섹션 */}
@@ -623,34 +644,54 @@ ${product.name} 래플에 당첨되었습니다.
                   </div>
 
                   {/* 응모 버튼 */}
-                  <button
-                    onClick={() => handleApply(product.id)}
-                    disabled={
-                      product.isApplying ||
-                      product.hasApplied ||
-                      currentPoints < product.pointCost
-                    }
-                    className={`w-full py-3 rounded-xl font-semibold transition-all transform active:scale-95 ${
-                      product.hasApplied
-                        ? "bg-green-100 text-green-700 cursor-not-allowed"
-                        : currentPoints < product.pointCost
-                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                        : "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl"
-                    }`}
-                  >
-                    {product.isApplying ? (
-                      <div className="flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        응모 중...
-                      </div>
-                    ) : product.hasApplied ? (
-                      "응모 완료"
-                    ) : currentPoints < product.pointCost ? (
-                      "포인트 부족"
-                    ) : (
-                      "래플 응모하기"
-                    )}
-                  </button>
+                  <div className="relative group">
+                    <button
+                      onClick={() => {
+                        if (currentPoints < product.pointCost) {
+                          window.location.href = "/";
+                        } else {
+                          handleApply(product.id);
+                        }
+                      }}
+                      disabled={product.isApplying || product.hasApplied}
+                      className={`w-full py-3 rounded-xl font-semibold transition-all transform active:scale-95 ${
+                        product.hasApplied
+                          ? "bg-green-100 text-green-700 cursor-not-allowed"
+                          : currentPoints < product.pointCost
+                          ? "bg-gray-100 text-gray-400 cursor-pointer hover:bg-gray-200"
+                          : "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl"
+                      }`}
+                    >
+                      {product.isApplying ? (
+                        <div className="flex items-center justify-center">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          응모 중...
+                        </div>
+                      ) : product.hasApplied ? (
+                        "응모 완료"
+                      ) : currentPoints < product.pointCost ? (
+                        "포인트 부족"
+                      ) : (
+                        "래플 응모하기"
+                      )}
+                    </button>
+
+                    {/* 포인트 부족일 때만 툴팁 표시 */}
+                    {currentPoints < product.pointCost &&
+                      !product.hasApplied && (
+                        <div className="absolute -top-20 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50 pointer-events-none">
+                          <div className="bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 text-white text-sm py-3 px-4 rounded-xl shadow-xl border border-white/20">
+                            <div className="text-center font-medium whitespace-nowrap">
+                              혼문을 지키고 포인트를 얻어볼까요?
+                            </div>
+                            <div className="text-center text-xs mt-1 text-blue-100">
+                              (클릭 시 메인 화면으로 이동합니다)
+                            </div>
+                            <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-blue-600"></div>
+                          </div>
+                        </div>
+                      )}
+                  </div>
                 </div>
               </div>
             ))}

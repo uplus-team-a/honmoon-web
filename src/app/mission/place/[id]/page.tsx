@@ -61,6 +61,25 @@ export default function MissionPlaceDetailPage() {
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [isWrongAnswer, setIsWrongAnswer] = useState(false);
+  const [wrongAnswerMissions, setWrongAnswerMissions] = useState<Set<number>>(
+    new Set()
+  );
+
+  // 이미지 팝업 상태
+  const [showImagePopup, setShowImagePopup] = useState(false);
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string>("");
+
+  // 이미지 클릭 핸들러
+  const handleImageClick = (imageUrl: string) => {
+    setSelectedImageUrl(imageUrl);
+    setShowImagePopup(true);
+  };
+
+  // 이미지 팝업 닫기
+  const closeImagePopup = () => {
+    setShowImagePopup(false);
+    setSelectedImageUrl("");
+  };
   const [completionResult, setCompletionResult] =
     useState<MissionCompleteResponse | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -122,7 +141,6 @@ export default function MissionPlaceDetailPage() {
 
     setSubmitting(true);
     setResultMsg("");
-    setIsWrongAnswer(false);
 
     try {
       // 이미지 업로드 미션의 경우 직접 처리
@@ -136,7 +154,9 @@ export default function MissionPlaceDetailPage() {
         );
 
         if (!result.isCorrect) {
-          setIsWrongAnswer(true);
+          setWrongAnswerMissions(
+            (prev) => new Set([...prev, activeMission.id])
+          );
           setResultMsg("❌ 아쉽습니다. 나중에 다시 도전해주세요!");
           setSubmitting(false);
           return;
@@ -147,6 +167,10 @@ export default function MissionPlaceDetailPage() {
         setCompletionResult(completionResult);
         setShowSuccessModal(true);
         setSubmitting(false);
+
+        // 헤더 포인트 정보 갱신
+        fetchProfileDetail().catch(() => {});
+        fetchProfile().catch(() => {});
         return;
       }
 
@@ -155,7 +179,7 @@ export default function MissionPlaceDetailPage() {
 
       if (!isCorrect) {
         // 오답 처리
-        setIsWrongAnswer(true);
+        setWrongAnswerMissions((prev) => new Set([...prev, activeMission.id]));
         setResultMsg("❌ 아쉽습니다. 나중에 다시 도전해주세요!");
         setSubmitting(false);
         return;
@@ -166,6 +190,10 @@ export default function MissionPlaceDetailPage() {
       setCompletionResult(result);
       setShowSuccessModal(true);
       setSubmitting(false);
+
+      // 헤더 포인트 정보 갱신
+      fetchProfileDetail().catch(() => {});
+      fetchProfile().catch(() => {});
     } catch (error) {
       console.error("Submit error:", error);
       setResultMsg("❌ 제출 중 오류가 발생했습니다.");
@@ -332,6 +360,18 @@ export default function MissionPlaceDetailPage() {
     [missions, activeIndex]
   );
 
+  // 현재 활성 미션이 완료되었는지 확인
+  const isCurrentMissionCompleted = useMemo(() => {
+    if (!activeMission) return false;
+    return completedMissionIds.has(activeMission.id);
+  }, [activeMission, completedMissionIds]);
+
+  // 현재 활성 미션이 오답 상태인지 확인
+  const isCurrentMissionWrong = useMemo(() => {
+    if (!activeMission) return false;
+    return wrongAnswerMissions.has(activeMission.id);
+  }, [activeMission, wrongAnswerMissions]);
+
   const missionType = useMemo(() => {
     if (!activeMission) return "";
     return (
@@ -478,13 +518,36 @@ export default function MissionPlaceDetailPage() {
       {/* 장소 정보 섹션 */}
       <div className="rounded-2xl overflow-hidden border border-neutral-200 bg-white shadow-sm mb-6">
         {place.imageUrl ? (
-          <MarkerImage
-            src={place.imageUrl}
-            alt={place.title}
-            width="w-full"
-            height="h-48"
-            shape="rounded"
-          />
+          <div
+            className="cursor-pointer relative group"
+            onClick={() => handleImageClick(place.imageUrl!)}
+          >
+            <MarkerImage
+              src={place.imageUrl}
+              alt={place.title}
+              width="w-full"
+              height="h-48"
+              shape="rounded"
+            />
+            {/* 확대 아이콘 오버레이 */}
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+              <div className="bg-white/90 rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg">
+                <svg
+                  className="w-6 h-6 text-gray-700"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"
+                  />
+                </svg>
+              </div>
+            </div>
+          </div>
         ) : null}
         {place.description ? (
           <div className="p-4 text-sm text-neutral-700">
@@ -615,11 +678,22 @@ export default function MissionPlaceDetailPage() {
                   </div>
                   <Button
                     id="text-submit-btn"
-                    disabled={submitting || !textAnswer.trim() || isWrongAnswer}
+                    disabled={
+                      submitting ||
+                      !textAnswer.trim() ||
+                      isCurrentMissionWrong ||
+                      isCurrentMissionCompleted
+                    }
                     onClick={() => handleSubmitAnswer(textAnswer.trim())}
                     className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white font-semibold py-3 rounded-lg transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
                   >
-                    {submitting ? "제출 중..." : "정답 제출"}
+                    {isCurrentMissionCompleted
+                      ? "이미 완료됨"
+                      : isCurrentMissionWrong
+                      ? "오답 처리됨"
+                      : submitting
+                      ? "제출 중..."
+                      : "정답 제출"}
                   </Button>
                   <div className="text-xs text-gray-500 text-center">
                     💡 Enter 키를 눌러도 제출할 수 있어요
@@ -656,11 +730,19 @@ export default function MissionPlaceDetailPage() {
                     ))}
                   </div>
                   <Button
-                    disabled={submitting || isWrongAnswer}
+                    disabled={
+                      submitting ||
+                      isCurrentMissionWrong ||
+                      isCurrentMissionCompleted
+                    }
                     onClick={() => handleSubmitAnswer(choiceIndex)}
                     className="transition active:translate-y-[1px] hover:scale-[1.02]"
                   >
-                    제출
+                    {isCurrentMissionCompleted
+                      ? "이미 완료됨"
+                      : isCurrentMissionWrong
+                      ? "오답 처리됨"
+                      : "제출"}
                   </Button>
                 </div>
               )}
@@ -798,12 +880,22 @@ export default function MissionPlaceDetailPage() {
                   {/* 제출 버튼 */}
                   <Button
                     disabled={
-                      submitting || uploading || !imageUrl || isWrongAnswer
+                      submitting ||
+                      uploading ||
+                      !imageUrl ||
+                      isCurrentMissionWrong ||
+                      isCurrentMissionCompleted
                     }
                     onClick={() => handleSubmitAnswer(imageUrl)}
                     className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 rounded-lg transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
                   >
-                    {submitting ? "제출 중..." : "이미지 제출"}
+                    {isCurrentMissionCompleted
+                      ? "이미 완료됨"
+                      : isCurrentMissionWrong
+                      ? "오답 처리됨"
+                      : submitting
+                      ? "제출 중..."
+                      : "이미지 제출"}
                   </Button>
                 </div>
               )}
@@ -814,11 +906,19 @@ export default function MissionPlaceDetailPage() {
                     해당 장소를 방문하면 완료 처리됩니다.
                   </div>
                   <Button
-                    disabled={submitting || isWrongAnswer}
+                    disabled={
+                      submitting ||
+                      isCurrentMissionWrong ||
+                      isCurrentMissionCompleted
+                    }
                     onClick={() => handleSubmitAnswer("visit")}
                     className="transition active:translate-y-[1px] hover:scale-[1.02]"
                   >
-                    완료 처리하기
+                    {isCurrentMissionCompleted
+                      ? "이미 완료됨"
+                      : isCurrentMissionWrong
+                      ? "오답 처리됨"
+                      : "완료 처리하기"}
                   </Button>
                 </div>
               )}
@@ -833,11 +933,19 @@ export default function MissionPlaceDetailPage() {
                     className="w-full h-11 px-3 border rounded-md"
                   />
                   <Button
-                    disabled={submitting || isWrongAnswer}
+                    disabled={
+                      submitting ||
+                      isCurrentMissionWrong ||
+                      isCurrentMissionCompleted
+                    }
                     onClick={() => handleSubmitAnswer(textAnswer)}
                     className="transition active:translate-y-[1px] hover:scale-[1.02]"
                   >
-                    제출
+                    {isCurrentMissionCompleted
+                      ? "이미 완료됨"
+                      : isCurrentMissionWrong
+                      ? "오답 처리됨"
+                      : "제출"}
                   </Button>
                 </div>
               )}
@@ -845,7 +953,7 @@ export default function MissionPlaceDetailPage() {
               {resultMsg && (
                 <div
                   className={`text-center text-sm p-4 rounded-lg ${
-                    isWrongAnswer
+                    isCurrentMissionWrong
                       ? "bg-red-50 border border-red-200 text-red-700"
                       : "text-neutral-700"
                   }`}
@@ -971,6 +1079,53 @@ export default function MissionPlaceDetailPage() {
                 <span className="mr-2">🚀</span>
                 다음 미션으로!
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 이미지 팝업 */}
+      {showImagePopup && selectedImageUrl && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="relative max-w-4xl max-h-[90vh] w-full">
+            {/* 닫기 버튼 */}
+            <button
+              onClick={closeImagePopup}
+              className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors z-10"
+            >
+              <div className="bg-black/50 rounded-full p-2 hover:bg-black/70 transition-colors">
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </div>
+            </button>
+
+            {/* 이미지 */}
+            <div className="bg-white rounded-2xl p-4 shadow-2xl">
+              <img
+                src={selectedImageUrl}
+                alt="장소 이미지"
+                className="w-full h-auto max-h-[80vh] object-contain rounded-xl"
+                onClick={closeImagePopup}
+              />
+
+              {/* 이미지 정보 */}
+              <div className="mt-4 text-center">
+                <h3 className="text-xl font-bold text-gray-900 mb-2">
+                  {place?.title}
+                </h3>
+                <p className="text-sm text-gray-600">클릭하여 닫기</p>
+              </div>
             </div>
           </div>
         </div>

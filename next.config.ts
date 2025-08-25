@@ -28,6 +28,11 @@ const nextConfig = {
       },
       {
         protocol: "https",
+        hostname: "storage.googleapis.com",
+        pathname: "/springboot-honmoon-access/**",
+      },
+      {
+        protocol: "https",
         hostname: "search1.daumcdn.net",
       },
       {
